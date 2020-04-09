@@ -2850,13 +2850,3 @@ function wrapText(text, x, y, lineHeight, width) {
   }
   ctx.fillText(line, x, y);
 }
-
-//recreates a canvas element (obsolete)
-// function new_canvas(name, ctx_name) {
-//   name = document.createElement("CANVAS");
-//   name.setAttribute("id", "canvas");
-//   document.body.appendChild(name);
-//   name.width = w;
-//   name.height = h;
-//   ctx_name = name.getContext("2d");
-// }
