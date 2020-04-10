@@ -2331,15 +2331,6 @@ function is_empty(vert) {
   return false;
 }
 
-//sets the longest  road variable equal to the index of the player with the longest consecutive road if its longer than 5 (implement later)
-function set_longest_road() {
-  // var count = 0
-  // for (i = 0; i < num_players; i++) {
-  //   for (j = 0; j < roads[i].length; j++) {
-  //   }
-  // }
-}
-
 //creates a map of player hands and victory point array, creates the hand canvas, and displays the first players hand if local
 function init_player_hands() {
   h_canvas = document.createElement("CANVAS");
