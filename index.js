@@ -1227,6 +1227,7 @@ function discard_check() {
     curr_player = temp_player;
     draw_hand(players[curr_player]);
     draw_ui();
+    return null;
   }
   var total_cards = 0;
   for (m = 0; m < 5; m++) {
@@ -1245,6 +1246,7 @@ function discard_check() {
     ui_canvas.addEventListener("click", discard_click, false);
   } else {
     curr_player++;
+    console.log(curr_player);
     discard_check();
   }
 }
