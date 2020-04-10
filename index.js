@@ -141,7 +141,7 @@ function player_order() {
     "white",
     "#3d2707",
     "#915700",
-    "#a39b2e",
+    "#b3b00f",
     "#160b57",
     "#3b0b57",
     "#a32e99",
@@ -1219,40 +1219,38 @@ function distribute_resources() {
   draw_hand(players[curr_player]);
 }
 
-//prompts players with more than 7 cards in hand to discard half of their hand (rounding down if odd)
-function discard_half() {
-  temp_player = curr_player;
-  for (n = 0; n < players.length; n++) {
-    total_cards = 0;
-    for (m = 0; m < 5; m++) {
-      total_cards += hands[players[n]][m];
-    }
-    if (total_cards > 7) {
-      curr_player = n;
-      draw_hand(players[curr_player]);
-      draw_ui();
-      ui_ctx.textBaseline = "top";
-      ui_ctx.textAlign = "center";
-      ui_ctx.fillStyle = "#e9e9e9";
-      ui_ctx.font = refscale * 0.05 + "px Arial";
-      ui_ctx.fillText("Discard Half Your Deck", w / 2, 40);
-      new_total = total_cards;
-      card_count = total_cards;
-      ui_canvas.removeEventListener("click", ui_click, false);
-      ui_canvas.addEventListener("click", discard_click, false);
-    }
-  }
-}
-
-//removes the selected cards from the players hand
-function discard_click(e) {
-  if (new_total <= Math.floor(card_count / 2) + 1) {
+//checks if the player has more than 7 cards and ends the discard sequence when done
+function discard_check() {
+  if (curr_player == num_players) {
     ui_canvas.removeEventListener("click", discard_click, false);
     ui_canvas.addEventListener("click", ui_click, false);
     curr_player = temp_player;
     draw_hand(players[curr_player]);
     draw_ui();
   }
+  var total_cards = 0;
+  for (m = 0; m < 5; m++) {
+    total_cards += hands[players[curr_player]][m];
+  }
+  if (total_cards > 7) {
+    draw_hand(players[curr_player]);
+    draw_ui();
+    ui_ctx.textBaseline = "top";
+    ui_ctx.textAlign = "center";
+    ui_ctx.fillStyle = "#e9e9e9";
+    ui_ctx.font = refscale * 0.05 + "px Arial";
+    ui_ctx.fillText("Discard Half Your Deck", w / 2, 40);
+    new_total = total_cards;
+    card_count = total_cards;
+    ui_canvas.addEventListener("click", discard_click, false);
+  } else {
+    curr_player++;
+    discard_check();
+  }
+}
+
+//prompts players with more than 7 cards in hand to discard half of their hand (rounding down if odd) and removes the selected cards from the players hand
+function discard_click(e) {
   card_width = refscale * 0.2;
   card_height = refscale * 0.1;
   margin = 5;
@@ -1271,6 +1269,11 @@ function discard_click(e) {
     x += card_width + margin;
   }
   draw_hand(players[curr_player]);
+  if (new_total <= Math.floor(card_count / 2) + 1) {
+    curr_player++;
+    ui_canvas.removeEventListener("click", discard_click, false);
+    discard_check();
+  }
 }
 
 //allows the current player to choose the new location of the robber
@@ -1292,9 +1295,11 @@ function robber_click(e) {
   s_canvas.removeEventListener("click", robber_click, false);
   s_canvas.remove();
   draw_ui();
-  ui_canvas.addEventListener("click", ui_click, false);
 
-  if (curr_dice == 7) discard_half();
+  if (curr_dice == 7) {
+    temp_player = curr_player;
+    discard_check();
+  } else ui_canvas.addEventListener("click", ui_click, false);
 }
 
 //visualizes a grey circle at the center of every hexagon the user is hovering over
@@ -1390,7 +1395,7 @@ function trade_click(e) {
         hands[players[curr_player]][n]--;
         trade_outbox.push(n);
         trade_price = 4;
-        if (ports[curr_player][n] != 0 && trade_outbox.length > 1) {
+        if (ports[curr_player][n + 1] != 0 && trade_outbox.length > 1) {
           var only_n = true;
           for (var m = 0; m < trade_outbox.length; m++) {
             if (trade_outbox[m] != n) {
@@ -1932,6 +1937,7 @@ function city_click(e) {
     s_canvas.removeEventListener("mousemove", settlement_vis, false);
     s_canvas.removeEventListener("click", city_click, false);
     s_canvas.remove();
+    ui_canvas.addEventListener("click", ui_click, false);
     cancel_opt = false;
     draw_ui();
   } else if (owned[curr_player].includes(nearest_vert)) {
@@ -1989,6 +1995,7 @@ function road_click(e) {
     s_canvas.removeEventListener("mousemove", road_vis, false);
     s_canvas.removeEventListener("click", road_click, false);
     s_canvas.remove();
+    ui_canvas.addEventListener("click", ui_click, false);
     cancel_opt = false;
     draw_ui();
   } else {
@@ -2197,6 +2204,7 @@ function settlement_click(e) {
     s_canvas.removeEventListener("mousemove", settlement_vis, false);
     s_canvas.removeEventListener("click", settlement_click, false);
     s_canvas.remove();
+    ui_canvas.addEventListener("click", ui_click, false);
     cancel_opt = false;
     draw_ui();
   } else {
