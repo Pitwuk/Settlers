@@ -25,7 +25,7 @@ SECRET_KEY = '8e-*^w%#%cv@yfze975cvvfkc#8vg37@fuv=-$i8w(*9)!$xh+'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['.christiandahnke.ddns.net']
 
 
 # Application definition

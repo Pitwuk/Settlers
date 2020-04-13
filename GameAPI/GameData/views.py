@@ -9,7 +9,7 @@ from django.core import serializers
 from django.conf import settings
 import json
 
-with open('GameData/game_data.json') as f:
+with open('GameData/game_data_format_example.json') as f:
     game_data = json.load(f)
 
 
