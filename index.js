@@ -18,18 +18,18 @@ var canvas,
   input,
   colors,
   poss_play_colors,
-  player_colors,
-  num_players,
+  player_colors,//
+  num_players,//
   past1,
-  players,
+  players,//
   b,
-  vertices,
-  coast_verts,
+  vertices,//
+  coast_verts,//
   game_type,
-  hands,
+  hands,//
   hexagon,
-  tiles,
-  vp,
+  tiles,//
+  vp,//
   s_w,
   s_h,
   r_w,
@@ -42,32 +42,32 @@ var canvas,
   nearest_vert,
   unsorted_ys,
   poss_verts,
-  g,
+  g,//
   closest,
-  start,
+  start,//
   curr_player,
-  settlements,
-  dist,
-  owned,
-  curr_dice,
+  settlements,//
+  dist,//
+  owned,//
+  curr_dice,//
   rolled,
   dev_cards,
   num_dev_cards,
-  card_arr,
-  used_cards,
-  roads,
-  road_points,
-  longest_road,
-  lr_holder,
-  la_holder,
-  la_tracker,
+  card_arr,//
+  used_cards,//
+  roads,//
+  road_points,//
+  longest_road,//
+  lr_holder,//
+  la_holder,//
+  la_tracker,//
   trade_outbox,
   trade_inbox,
   no_more_out,
   no_more_in,
   trade_price,
   robber_loc,
-  tile_centers,
+  tile_centers,//
   robber_bool,
   total_cards,
   new_total,
@@ -75,13 +75,13 @@ var canvas,
   card_count,
   cancel_opt,
   res_nums,
-  road_g,
+  road_g,//
   start_road_points,
   road_card_bool,
   yop_bool,
   mon_bool,
   dun_did,
-  ports,
+  ports,//
   port_map; //global variables
 
 //initializes the canvas and starts the menu

@@ -1,16 +1,24 @@
 {
-  "players": {
-    "chimk": {
-      "hand": [2, 3, 4, 5, 6],
-      "points": 2
-    },
-    "dicktouch.us": {
-      "hand": [1, 1, 1, 1, 1],
-      "points": 5
-    },
-    "patar": {
-      "hand": [0, 0, 2, 2, 0],
-      "points": 4
-    }
+  "players": {},
+  "num_players": 0,
+  "vertices": {},
+  "coast_verts": [],
+  "tiles": {},
+  "tile_centers": {},
+  "distribution": {},
+  "longest_road": 7,
+  "largest_army": 4,
+  "robber_loc": 4,
+  "player_blank": {
+    "color": "",
+    "hand": [0, 0, 0, 0, 0],
+    "points": 0,
+    "settlements": [],
+    "roads": [],
+    "road_verts": [],
+    "dev_cards": [0, 0, 0, 0, 0],
+    "used_dev_cards": [0, 0, 0, 0],
+    "longest_road": false,
+    "largest_army": false
   }
 }
