@@ -1,14 +1,15 @@
 {
   "players": {},
   "num_players": 0,
+  "curr_player": "",
   "vertices": {},
   "coast_verts": [],
   "tiles": {},
   "tile_centers": {},
   "distribution": {},
-  "longest_road": 7,
-  "largest_army": 4,
-  "robber_loc": 4,
+  "longest_road": 0,
+  "largest_army": 0,
+  "robber_loc": 0,
   "player_blank": {
     "color": "",
     "hand": [0, 0, 0, 0, 0],

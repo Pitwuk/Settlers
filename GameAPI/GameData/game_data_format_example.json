@@ -34,6 +34,7 @@
     }
   },
   "num_players": 2,
+  "curr_player": "chimk",
   "vertices": { "0": [123, 123] },
   "coast_verts": [0, 1, 2, 3],
   "tiles": { "0": { "number": 12, "resource": "s" } },

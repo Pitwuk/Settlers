@@ -14,6 +14,14 @@ with open('GameData/game_data_format_example.json') as f:
 
 
 @api_view(['GET'])
+def GameData():
+    try:
+        return str(game_data)
+    except ValueError as e:
+        return Response(e.args[0], status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
 def PlayerHand(playername):
     try:
         player = str(json.loads(playername.body))

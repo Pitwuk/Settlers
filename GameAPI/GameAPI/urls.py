@@ -19,5 +19,6 @@ from GameData import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('gamedata/', views.GameData),
     path('playerhand/', views.PlayerHand)
 ]
