@@ -2,6 +2,13 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:html' as html;
+import 'package:http/http.dart' as http;
+import 'package:bloc/bloc.dart';
+import 'package:meta/meta.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:settlers_flutter/repositories/repositories.dart';
+import 'package:settlers_flutter/bloc/bloc.dart';
 
 final appContainer = html.window.document.getElementById('app-container');
 const colors = {
@@ -15,21 +22,51 @@ const colors = {
   'r': Color(0xffc4bf98)
 };
 
-void main() => runApp(Menu());
+void main() {
+  BlocSupervisor.delegate = SimpleBlocDelegate();
+
+  final GameRepository repository = GameRepository(
+    apiClient: ApiClient(
+      httpClient: http.Client(),
+    ),
+  );
+  runApp(Menu(
+    repository: repository,
+  ));
+}
+
+class SimpleBlocDelegate extends BlocDelegate {
+  @override
+  void onTransition(Bloc bloc, Transition transition) {
+    super.onTransition(bloc, transition);
+    print(transition);
+  }
+}
 
 class Menu extends StatelessWidget {
+  final GameRepository repository;
+
+  Menu({Key key, @required this.repository})
+      : assert(repository != null),
+        super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      routes: {
-        '/': (context) => StartMenu(),
-        '/singleplayer': (context) => SingleplayerMenu(),
-        '/multiplayer': (context) => MultiplayerMenu(),
-        '/local': (context) => NumPlayersMenu(),
-        '/online': (context) => OnlineMenu(),
-        '/names': (context) => InputNames()
-      },
-    );
+        routes: {
+          // '/': (context) => StartMenu(),
+          '/singleplayer': (context) => SingleplayerMenu(),
+          '/multiplayer': (context) => MultiplayerMenu(),
+          '/local': (context) => NumPlayersMenu(),
+          '/online': (context) => OnlineMenu(),
+          '/names': (context) => InputNames()
+        },
+        home: Scaffold(
+          body: BlocProvider(
+            create: (context) => GameBloc(repository: repository),
+            child: StartMenu(),
+          ),
+        ));
   }
 }
 
@@ -42,26 +79,50 @@ class StartMenu extends StatelessWidget {
   ];
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: colors['beige'],
-      body: Stack(
-        children: <Widget>[
-          Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  width: 7.0,
-                  color: colors['brown'],
-                ),
-              ),
-              child: Align(
-                  alignment: Alignment(0, -0.7),
-                  child: (Text('Welcome to The Settlers of Catan',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 40.0))))),
-          MenuButtons(buttons)
-        ],
-      ),
+    return BlocBuilder<GameBloc, GameState>(
+      builder: (context, state) {
+        if (state is GameEmpty) {
+          BlocProvider.of<GameBloc>(context).add(FetchGame());
+        }
+        if (state is GameError) {
+          return Center(
+            child: Text('failed to fetch game'),
+          );
+        }
+        if (state is GameLoaded) {
+          return ListTile(
+            leading: Text(
+              '${state.gamedata}',
+              style: TextStyle(fontSize: 10.0),
+            ),
+            title: Text('gay'),
+          );
+        }
+        return Center(
+          child: CircularProgressIndicator(),
+        );
+      },
     );
+    // return Scaffold(
+    //   backgroundColor: colors['beige'],
+    //   body: Stack(
+    //     children: <Widget>[
+    //       Container(
+    //           decoration: BoxDecoration(
+    //             border: Border.all(
+    //               width: 7.0,
+    //               color: colors['brown'],
+    //             ),
+    //           ),
+    //           child: Align(
+    //               alignment: Alignment(0, -0.7),
+    //               child: (Text('Welcome to The Settlers of Catan',
+    //                   textAlign: TextAlign.center,
+    //                   style: TextStyle(fontSize: 40.0))))),
+    //       MenuButtons(buttons)
+    //     ],
+    //   ),
+    // );
   }
 }
 

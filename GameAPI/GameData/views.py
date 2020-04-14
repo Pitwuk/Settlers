@@ -14,9 +14,9 @@ with open('GameData/game_data_format_example.json') as f:
 
 
 @api_view(['GET'])
-def GameData():
+def GameData(useless):
     try:
-        return str(game_data)
+        return JsonResponse(game_data)
     except ValueError as e:
         return Response(e.args[0], status.HTTP_400_BAD_REQUEST)
 
