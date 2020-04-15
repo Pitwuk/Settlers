@@ -11,7 +11,10 @@ class GameRepository {
   GameRepository({@required this.apiClient}) : assert(apiClient != null);
 
   Future<Game> fetchGame() async {
-    print('fetching');
     return await apiClient.fetchGame();
+  }
+
+  Future<Game> putGame(ke, value) async {
+    return await apiClient.putGame(ke, value);
   }
 }

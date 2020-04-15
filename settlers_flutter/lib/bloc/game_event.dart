@@ -10,3 +10,10 @@ class FetchGame extends GameEvent {
   @override
   List<Object> get props => [];
 }
+
+class PutGame extends GameEvent {
+  const PutGame();
+
+  @override
+  List<Object> get props => [];
+}

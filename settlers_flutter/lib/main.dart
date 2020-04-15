@@ -2,10 +2,10 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:html' as html;
-import 'package:http/http.dart' as http;
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:settlers_flutter/models/game.dart';
 
 import 'package:settlers_flutter/repositories/repositories.dart';
 import 'package:settlers_flutter/bloc/bloc.dart';
@@ -22,17 +22,14 @@ const colors = {
   'r': Color(0xffc4bf98)
 };
 
+final GameRepository repository = GameRepository(
+  apiClient: ApiClient(),
+);
+
 void main() {
   BlocSupervisor.delegate = SimpleBlocDelegate();
 
-  final GameRepository repository = GameRepository(
-    apiClient: ApiClient(
-      httpClient: http.Client(),
-    ),
-  );
-  runApp(Menu(
-    repository: repository,
-  ));
+  runApp(Menu());
 }
 
 class SimpleBlocDelegate extends BlocDelegate {
@@ -44,29 +41,19 @@ class SimpleBlocDelegate extends BlocDelegate {
 }
 
 class Menu extends StatelessWidget {
-  final GameRepository repository;
-
-  Menu({Key key, @required this.repository})
-      : assert(repository != null),
-        super(key: key);
-
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        routes: {
-          // '/': (context) => StartMenu(),
-          '/singleplayer': (context) => SingleplayerMenu(),
-          '/multiplayer': (context) => MultiplayerMenu(),
-          '/local': (context) => NumPlayersMenu(),
-          '/online': (context) => OnlineMenu(),
-          '/names': (context) => InputNames()
-        },
-        home: Scaffold(
-          body: BlocProvider(
-            create: (context) => GameBloc(repository: repository),
-            child: StartMenu(),
-          ),
-        ));
+    return MaterialApp(routes: {
+      '/': (context) => StartMenu(),
+      '/singleplayer': (context) => SingleplayerMenu(),
+      '/multiplayer': (context) => MultiplayerMenu(),
+      '/local': (context) => NumPlayersMenu(),
+      '/online': (context) => OnlineMenu(),
+      '/names/1': (context) => InputNames(1),
+      '/names/2': (context) => InputNames(2),
+      '/names/3': (context) => InputNames(3),
+      '/names/4': (context) => InputNames(4)
+    });
   }
 }
 
@@ -77,6 +64,37 @@ class StartMenu extends StatelessWidget {
     'Multiplayer',
     '/multiplayer'
   ];
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: colors['beige'],
+      body: Stack(
+        children: <Widget>[
+          Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  width: 7.0,
+                  color: colors['brown'],
+                ),
+              ),
+              child: Align(
+                  alignment: Alignment(0, -0.7),
+                  child: (Text('Welcome to The Settlers of Catan',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 40.0))))),
+          MenuButtons(buttons)
+        ],
+      ),
+    );
+  }
+}
+
+class RefreshGame extends StatelessWidget {
+  final GameRepository repository;
+
+  RefreshGame({Key key, @required this.repository})
+      : assert(repository != null),
+        super(key: key);
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<GameBloc, GameState>(
@@ -90,39 +108,54 @@ class StartMenu extends StatelessWidget {
           );
         }
         if (state is GameLoaded) {
-          return ListTile(
-            leading: Text(
-              '${state.gamedata}',
-              style: TextStyle(fontSize: 10.0),
-            ),
-            title: Text('gay'),
-          );
+          return Center(
+              child: Text(
+            '${state.gamedata.game_data}',
+            style: TextStyle(fontSize: 40.0),
+          ));
         }
         return Center(
           child: CircularProgressIndicator(),
         );
       },
     );
-    // return Scaffold(
-    //   backgroundColor: colors['beige'],
-    //   body: Stack(
-    //     children: <Widget>[
-    //       Container(
-    //           decoration: BoxDecoration(
-    //             border: Border.all(
-    //               width: 7.0,
-    //               color: colors['brown'],
-    //             ),
-    //           ),
-    //           child: Align(
-    //               alignment: Alignment(0, -0.7),
-    //               child: (Text('Welcome to The Settlers of Catan',
-    //                   textAlign: TextAlign.center,
-    //                   style: TextStyle(fontSize: 40.0))))),
-    //       MenuButtons(buttons)
-    //     ],
-    //   ),
-    // );
+  }
+}
+
+class UpdateGame extends StatelessWidget {
+  final GameRepository repository;
+
+  UpdateGame({Key key, @required this.repository})
+      : assert(repository != null),
+        super(key: key);
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<GameBloc, GameState>(
+      builder: (context, state) {
+        if (state is GameEmpty) {
+          BlocProvider.of<GameBloc>(context).add(PutGame());
+        }
+        if (state is GameError) {
+          return Center(
+            child: Text('failed to put value'),
+          );
+        }
+        if (state is GameLoaded) {
+          return Center(
+              child: Text(
+            '${state.gamedata.game_data['num_players']}',
+            style: TextStyle(fontSize: 40.0),
+          ));
+        }
+        return Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+  }
+
+  Future<Game> update(ke, value) async {
+    return await repository.putGame(ke, value);
   }
 }
 
@@ -174,7 +207,16 @@ class OnlineMenu extends StatelessWidget {
 }
 
 class NumPlayersMenu extends StatelessWidget {
-  var buttons = ['1', '/names', '2', '/names', '3', '/names', '4', '/names'];
+  var buttons = [
+    '1',
+    '/names/1',
+    '2',
+    '/names/2',
+    '3',
+    '/names/3',
+    '4',
+    '/names/4'
+  ];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,12 +239,19 @@ class NumPlayersMenu extends StatelessWidget {
 }
 
 class InputNames extends StatelessWidget {
+  int num;
+  InputNames(this.num);
+
   @override
   Widget build(BuildContext context) {
+    UpdateGame(repository: repository).update('num_players', num);
+
     return Scaffold(
-      body: Center(
-        child: Text('Can\'t Enter Names Yet',
-            style: Theme.of(context).textTheme.headline2),
+      body: BlocProvider(
+        create: (BuildContext context) => GameBloc(repository: repository),
+        child: RefreshGame(
+          repository: repository,
+        ),
       ),
     );
   }
@@ -259,3 +308,17 @@ class _MenuState extends State<MenuButtons> {
                 ))));
   }
 }
+
+//put to api basic example
+// @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: BlocProvider(
+//         create: (BuildContext context) =>
+//             GameBloc(repository: repository, ke: 'num_players', value: 2),
+//         child: UpdateGame(
+//           repository: repository,
+//         ),
+//       ),
+//     );
+//   }

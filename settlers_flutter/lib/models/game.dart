@@ -9,7 +9,7 @@ class Game extends Equatable {
   List<Object> get props => [game_data];
 
   static Game fromJson(dynamic json) {
-    return Game(game_data: json['game_data']);
+    return Game(game_data: json);
   }
 
   @override
