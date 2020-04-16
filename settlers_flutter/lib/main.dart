@@ -52,13 +52,14 @@ class Menu extends StatelessWidget {
       '/names/1': (context) => InputNames(1),
       '/names/2': (context) => InputNames(2),
       '/names/3': (context) => InputNames(3),
-      '/names/4': (context) => InputNames(4)
+      '/names/4': (context) => InputNames(4),
+      '/order': (context) => OrderScreen()
     });
   }
 }
 
 class StartMenu extends StatelessWidget {
-  var buttons = [
+  final buttons = [
     'Singleplayer',
     '/singleplayer',
     'Multiplayer',
@@ -160,7 +161,7 @@ class UpdateGame extends StatelessWidget {
 }
 
 class MultiplayerMenu extends StatelessWidget {
-  var buttons = ['Local', '/local', 'Online', '/online'];
+  final buttons = ['Local', '/local', 'Online', '/online'];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -207,7 +208,7 @@ class OnlineMenu extends StatelessWidget {
 }
 
 class NumPlayersMenu extends StatelessWidget {
-  var buttons = [
+  final buttons = [
     '1',
     '/names/1',
     '2',
@@ -239,26 +240,33 @@ class NumPlayersMenu extends StatelessWidget {
 }
 
 class InputNames extends StatelessWidget {
-  int num;
+  final num;
   InputNames(this.num);
 
   @override
   Widget build(BuildContext context) {
     UpdateGame(repository: repository).update('num_players', num);
-
     return Scaffold(
-      body: BlocProvider(
-        create: (BuildContext context) => GameBloc(repository: repository),
-        child: RefreshGame(
-          repository: repository,
-        ),
+      backgroundColor: colors['beige'],
+      body: Stack(
+        children: <Widget>[
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                width: 7.0,
+                color: colors['brown'],
+              ),
+            ),
+          ),
+          NameForm(num)
+        ],
       ),
     );
   }
 }
 
 class MenuButtons extends StatefulWidget {
-  var buttons;
+  final buttons;
   MenuButtons(this.buttons);
   @override
   _MenuState createState() => _MenuState(buttons);
@@ -274,15 +282,15 @@ class _MenuState extends State<MenuButtons> {
 
   @override
   Widget build(BuildContext context) {
-    List<Widget> button_widgets = new List(buttons.length / 2);
+    List<Widget> buttonWidgets = new List(buttons.length / 2);
     for (int i = 0; i < buttons.length - 1; i += 2) {
       // print(i);
       // print((i / 2).round());
-      button_widgets[(i / 2).round()] =
+      buttonWidgets[(i / 2).round()] =
           menuButton(context, buttons[i], 200, 100, buttons[i + 1]);
     }
     return Center(
-        child: Wrap(spacing: 10, runSpacing: 10, children: button_widgets));
+        child: Wrap(spacing: 10, runSpacing: 10, children: buttonWidgets));
   }
 
   Widget menuButton(BuildContext context, txt, width, height, route) {
@@ -306,6 +314,123 @@ class _MenuState extends State<MenuButtons> {
                       style: TextStyle(fontSize: 40.0, color: Colors.white),
                       maxLines: 1),
                 ))));
+  }
+}
+
+class NameForm extends StatefulWidget {
+  final num;
+  NameForm(this.num);
+  @override
+  _NameFormState createState() {
+    return _NameFormState(num);
+  }
+}
+
+class _NameFormState extends State<NameForm> {
+  final num;
+  _NameFormState(this.num);
+
+  void _showOrderScreen() {
+    Navigator.of(context).pushNamed('/order');
+  }
+
+  final myController = TextEditingController();
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is disposed.
+    myController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    int count = 0;
+    return Column(children: <Widget>[
+      Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: TextFormField(
+          controller: myController,
+          decoration: const InputDecoration(labelText: 'Name'),
+          validator: (value) {
+            if (value.isEmpty) {
+              return 'Please enter name';
+            }
+            return null;
+          },
+        ),
+      ),
+      RaisedButton(
+        onPressed: () {
+          if (myController.text != '') {
+            var name = myController.text;
+            Scaffold.of(context).showSnackBar(SnackBar(content: Text(name)));
+            UpdateGame(repository: repository).update("%new_player%", name);
+            count++;
+            if (count == num) {
+              _showOrderScreen();
+            }
+          }
+        },
+        child: Text('Submit'),
+      )
+    ]);
+  }
+}
+
+class OrderScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        backgroundColor: colors['beige'],
+        body: Stack(children: <Widget>[
+          Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  width: 7.0,
+                  color: colors['brown'],
+                ),
+              ),
+              child: Align(
+                  alignment: Alignment(0, -0.7),
+                  child: (Text('Player Order:',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 40.0))))),
+          BlocProvider(
+            create: (BuildContext context) => GameBloc(
+                repository: repository, ke: '%player_order%', value: null),
+            child: BlocBuilder<GameBloc, GameState>(
+              builder: (context, state) {
+                if (state is GameEmpty) {
+                  BlocProvider.of<GameBloc>(context).add(PutGame());
+                }
+                if (state is GameError) {
+                  return Center(
+                    child: Text('failed to put value'),
+                  );
+                }
+                if (state is GameLoaded) {
+                  var players = state.gamedata.game_data['player_order'];
+                  var str = '';
+                  for (var i in players) {
+                    str += i + '\n';
+                  }
+                  return Center(
+                      child: Text(
+                    str,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 40.0,
+                    ),
+                  ));
+                }
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              },
+            ),
+          ),
+        ]));
   }
 }
 

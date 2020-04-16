@@ -1,1 +1,26 @@
-{"players": {}, "num_players": 1, "curr_player": "", "vertices": {}, "coast_verts": [], "tiles": {}, "tile_centers": {}, "distribution": {}, "longest_road": 0, "largest_army": 0, "robber_loc": 3, "player_blank": {"color": "", "hand": [0, 0, 0, 0, 0], "points": 0, "settlements": [], "roads": [], "road_verts": [], "dev_cards": [0, 0, 0, 0, 0], "used_dev_cards": [0, 0, 0, 0], "longest_road": false, "largest_army": false}}
+{
+  "players": {},
+  "num_players": 0,
+  "curr_player": "",
+  "vertices": {},
+  "coast_verts": [],
+  "tiles": {},
+  "tile_centers": {},
+  "distribution": {},
+  "longest_road": 0,
+  "largest_army": 0,
+  "robber_loc": 0,
+  "player_blank": {
+    "color": "",
+    "hand": [0, 0, 0, 0, 0],
+    "points": 0,
+    "settlements": [],
+    "roads": [],
+    "road_verts": [],
+    "dev_cards": [0, 0, 0, 0, 0],
+    "used_dev_cards": [0, 0, 0, 0],
+    "longest_road": false,
+    "largest_army": false
+  },
+  "player_order": []
+}
