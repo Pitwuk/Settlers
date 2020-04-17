@@ -496,10 +496,13 @@ class GameBoard extends CustomPainter {
     if (globals.tiles == null) {
       initTiles();
       print('Initializing Tiles...');
-      UpdateGame(repository: repository)
-          .update('tiles', globals.tiles.toString());
+      if (globals.gametype == 'online')
+        UpdateGame(repository: repository)
+            .update('tiles', globals.tiles.toString());
     }
+
     drawTiles();
+    removeDuplicates();
   }
 
   @override
@@ -589,11 +592,39 @@ class GameBoard extends CustomPainter {
     var paint = Paint()..color = colors[globals.tiles[tile][0]];
 
     final hex = Path();
+    globals.vertices.add([globals.hexagon[0] + x, globals.hexagon[1] + y]);
     hex.moveTo(globals.hexagon[0] + x, globals.hexagon[1] + y);
     for (int i = 2; i < globals.hexagon.length - 1; i += 2) {
+      globals.vertices
+          .add([globals.hexagon[i] + x, globals.hexagon[i + 1] + y]);
       hex.lineTo(globals.hexagon[i] + x, globals.hexagon[i + 1] + y);
     }
     bgCanvas.drawPath(hex, paint);
+  }
+
+  //removes overlapping vertices
+  void removeDuplicates() {
+    for (int i = 0; i < globals.vertices.length; i++) {
+      var count = 0;
+      for (int j = i + 1; j < globals.vertices.length; j++) {
+        if ((globals.vertices[j][0]).round() ==
+                (globals.vertices[i][0]).round() &&
+            (globals.vertices[j][1]).round() ==
+                (globals.vertices[i][1]).round()) {
+          // for (k = 0; k < 12; k++) {
+          //   for (l = 0; l < 5; l++) {
+          //     dist[i][k][l] += dist[j][k][l];
+          //   }
+          // }
+
+          // dist.splice(j, 1);
+          globals.vertices.removeRange(j, j + 1);
+          count++;
+          j -= 1;
+        }
+      }
+      // if (count < 2) coast_verts.push(i);
+    }
   }
 }
 //put to api basic example

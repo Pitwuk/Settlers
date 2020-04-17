@@ -4,7 +4,9 @@ import 'dart:math';
 double w, h, refscale, r;
 
 //game board variables
+String gametype = 'local';
 var tiles; // hashmap of tiles with coordinate : [resource, dice num]
+var vertices = [];
 
 //hexagon drawing variables
 var hexagon = [
