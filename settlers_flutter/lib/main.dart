@@ -250,7 +250,10 @@ class InputNames extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    UpdateGame(repository: repository).update('num_players', num);
+    if (globals.gametype == 'online')
+      UpdateGame(repository: repository).update('num_players', num);
+    else
+      globals.numPlayers = num;
     return Scaffold(
       backgroundColor: colors['beige'],
       body: Stack(
@@ -370,7 +373,11 @@ class _NameFormState extends State<NameForm> {
           if (myController.text != '') {
             var name = myController.text;
             Scaffold.of(context).showSnackBar(SnackBar(content: Text(name)));
-            UpdateGame(repository: repository).update("%new_player%", name);
+            if (globals.gametype == 'online')
+              UpdateGame(repository: repository).update("%new_player%", name);
+            else {
+              globals.players[name] = globals.playerBlank;
+            }
             count++;
             if (count == num) {
               _showOrderScreen();
@@ -397,6 +404,70 @@ class _OrderScreen extends State<OrderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (globals.gametype == 'online') {
+      return Scaffold(
+          backgroundColor: colors['beige'],
+          body: Stack(children: <Widget>[
+            GestureDetector(
+                onTap: _showGameScreen,
+                child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        width: 7.0,
+                        color: colors['brown'],
+                      ),
+                    ),
+                    child: Align(
+                        alignment: Alignment(0, -0.7),
+                        child: (Text('Player Order:',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 40.0)))))),
+            BlocProvider(
+              create: (BuildContext context) => GameBloc(
+                  repository: repository, ke: '%player_order%', value: null),
+              child: BlocBuilder<GameBloc, GameState>(
+                builder: (context, state) {
+                  if (state is GameEmpty) {
+                    BlocProvider.of<GameBloc>(context).add(PutGame());
+                  }
+                  if (state is GameError) {
+                    return Center(
+                      child: Text('failed to put value'),
+                    );
+                  }
+                  if (state is GameLoaded) {
+                    globals.playerOrder =
+                        state.gamedata.game_data['player_order'];
+                    var str = '';
+                    for (var i in globals.playerOrder) {
+                      str += i + '\n';
+                    }
+                    return Center(
+                        child: Text(
+                      str,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 40.0,
+                      ),
+                    ));
+                  }
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                },
+              ),
+            ),
+          ]));
+    }
+    List players = [];
+    globals.players.forEach((key, value) => players.add(key));
+    players.shuffle();
+
+    globals.playerOrder = players;
+    String str = '';
+    for (String i in globals.playerOrder) {
+      str += i + '\n';
+    }
     return Scaffold(
         backgroundColor: colors['beige'],
         body: Stack(children: <Widget>[
@@ -414,40 +485,10 @@ class _OrderScreen extends State<OrderScreen> {
                       child: (Text('Player Order:',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 40.0)))))),
-          BlocProvider(
-            create: (BuildContext context) => GameBloc(
-                repository: repository, ke: '%player_order%', value: null),
-            child: BlocBuilder<GameBloc, GameState>(
-              builder: (context, state) {
-                if (state is GameEmpty) {
-                  BlocProvider.of<GameBloc>(context).add(PutGame());
-                }
-                if (state is GameError) {
-                  return Center(
-                    child: Text('failed to put value'),
-                  );
-                }
-                if (state is GameLoaded) {
-                  var players = state.gamedata.game_data['player_order'];
-                  var str = '';
-                  for (var i in players) {
-                    str += i + '\n';
-                  }
-                  return Center(
-                      child: Text(
-                    str,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 40.0,
-                    ),
-                  ));
-                }
-                return Center(
-                  child: CircularProgressIndicator(),
-                );
-              },
-            ),
-          ),
+          Center(
+              child: Text(str,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 40.0)))
         ]));
   }
 }
@@ -496,13 +537,14 @@ class GameBoard extends CustomPainter {
     if (globals.tiles == null) {
       initTiles();
       print('Initializing Tiles...');
-      if (globals.gametype == 'online')
-        UpdateGame(repository: repository)
-            .update('tiles', globals.tiles.toString());
     }
-
     drawTiles();
     removeDuplicates();
+    if (globals.gametype == 'online') {
+      //pass to api
+      UpdateGame(repository: repository)
+          .update('tiles', globals.tiles.toString());
+    }
   }
 
   @override
@@ -627,6 +669,7 @@ class GameBoard extends CustomPainter {
     }
   }
 }
+
 //put to api basic example
 // @override
 //   Widget build(BuildContext context) {

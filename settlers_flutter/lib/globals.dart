@@ -3,6 +3,23 @@ import 'dart:math';
 //canvas variables
 double w, h, refscale, r;
 
+//local game player variables
+int numPlayers;
+List playerOrder;
+var players = {};
+var playerBlank = {
+  "color": "",
+  "hand": [0, 0, 0, 0, 0],
+  "points": 0,
+  "settlements": [],
+  "roads": [],
+  "road_verts": [],
+  "dev_cards": [0, 0, 0, 0, 0],
+  "used_dev_cards": [0, 0, 0, 0],
+  "longest_road": false,
+  "largest_army": false
+};
+
 //game board variables
 String gametype = 'local';
 var tiles; // hashmap of tiles with coordinate : [resource, dice num]

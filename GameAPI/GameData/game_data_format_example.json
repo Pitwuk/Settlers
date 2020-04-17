@@ -1,1 +1,26 @@
-{"players": {}, "num_players": 2, "curr_player": "", "vertices": {}, "coast_verts": [], "tiles": "{0: [s, 5], 1: [w, 11], 2: [o, 8], 3: [r, 4], 4: [s, 12], 5: [o, 8], 6: [w, 4], 7: [w, 2], 8: [s, 9], 9: [o, 2], 10: [b, 11], 11: [s, 8], 12: [b, 6], 13: [f, 9], 14: [f, 3], 15: [b, 2], 16: [f, 11], 17: [w, 9], 18: [f, 11]}", "tile_centers": {}, "distribution": {}, "longest_road": 0, "largest_army": 0, "robber_loc": 0, "player_blank": {"color": "", "hand": [0, 0, 0, 0, 0], "points": 0, "settlements": [], "roads": [], "road_verts": [], "dev_cards": [0, 0, 0, 0, 0], "used_dev_cards": [0, 0, 0, 0], "longest_road": false, "largest_army": false}, "player_order": []}
+{
+  "players": {},
+  "num_players": 2,
+  "curr_player": "",
+  "vertices": [],
+  "coast_verts": [],
+  "tiles": "{0: [s, 5], 1: [w, 11], 2: [o, 8], 3: [r, 4], 4: [s, 12], 5: [o, 8], 6: [w, 4], 7: [w, 2], 8: [s, 9], 9: [o, 2], 10: [b, 11], 11: [s, 8], 12: [b, 6], 13: [f, 9], 14: [f, 3], 15: [b, 2], 16: [f, 11], 17: [w, 9], 18: [f, 11]}",
+  "tile_centers": {},
+  "distribution": {},
+  "longest_road": 0,
+  "largest_army": 0,
+  "robber_loc": 0,
+  "player_blank": {
+    "color": "",
+    "hand": [0, 0, 0, 0, 0],
+    "points": 0,
+    "settlements": [],
+    "roads": [],
+    "road_verts": [],
+    "dev_cards": [0, 0, 0, 0, 0],
+    "used_dev_cards": [0, 0, 0, 0],
+    "longest_road": false,
+    "largest_army": false
+  },
+  "player_order": []
+}
