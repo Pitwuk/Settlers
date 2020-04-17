@@ -23,7 +23,10 @@ var playerBlank = {
 //game board variables
 String gametype = 'local';
 var tiles; // hashmap of tiles with coordinate : [resource, dice num]
-var vertices = [];
+List vertices = [];
+List dist = [];
+Map resourceIndex = {'s': 0, 'o': 1, 'b': 2, 'w': 3, 'f': 4};
+int robberLoc;
 
 //hexagon drawing variables
 var hexagon = [

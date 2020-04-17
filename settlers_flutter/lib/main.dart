@@ -515,7 +515,7 @@ class StartLocalGame extends StatelessWidget {
 }
 
 class GameBoard extends CustomPainter {
-  var bgCanvas, resNums, robberLoc;
+  var bgCanvas;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -545,6 +545,9 @@ class GameBoard extends CustomPainter {
       UpdateGame(repository: repository)
           .update('tiles', globals.tiles.toString());
     }
+    drawVertices();
+    constructGraph();
+    print(globals.dist);
   }
 
   @override
@@ -574,7 +577,6 @@ class GameBoard extends CustomPainter {
       "f",
       "r",
     ]; //stored possible resources s=sheep, o=ore, b=brick,w=wheat,f=forest,r=robber
-    resNums = {0: "s", 1: "o", 2: "b", 3: "w", 4: "f"};
 
     var startlen = resArr.length;
     var rand = Random();
@@ -585,7 +587,7 @@ class GameBoard extends CustomPainter {
       int diceNum = (rand.nextDouble() * 10 + 3).floor();
       if (diceNum == 7) diceNum = 2;
       globals.tiles[i] = [newRes, diceNum];
-      if (newRes == "r") robberLoc = i;
+      if (newRes == "r") globals.robberLoc = i;
     }
   }
 
@@ -630,9 +632,17 @@ class GameBoard extends CustomPainter {
   }
 
 // draws a hexagon at the given position with a given tile
-  void drawHexagon(x, y, tile) {
-    var paint = Paint()..color = colors[globals.tiles[tile][0]];
+  void drawHexagon(double x, double y, int tile) {
+    for (int i = 0; i < 6; i++) {
+      globals.dist.add([]);
+      for (int j = 0; j < 12; j++)
+        globals.dist[globals.dist.length - 1].add([0, 0, 0, 0, 0]);
 
+      if (globals.tiles[tile][0] != "r")
+        globals.dist[globals.dist.length - 1][globals.tiles[tile][1] - 1]
+            [globals.resourceIndex[globals.tiles[tile][0]]]++;
+    }
+    var paint = Paint()..color = colors[globals.tiles[tile][0]];
     final hex = Path();
     globals.vertices.add([globals.hexagon[0] + x, globals.hexagon[1] + y]);
     hex.moveTo(globals.hexagon[0] + x, globals.hexagon[1] + y);
@@ -647,25 +657,166 @@ class GameBoard extends CustomPainter {
   //removes overlapping vertices
   void removeDuplicates() {
     for (int i = 0; i < globals.vertices.length; i++) {
-      var count = 0;
+      int count = 0;
       for (int j = i + 1; j < globals.vertices.length; j++) {
         if ((globals.vertices[j][0]).round() ==
                 (globals.vertices[i][0]).round() &&
             (globals.vertices[j][1]).round() ==
                 (globals.vertices[i][1]).round()) {
-          // for (k = 0; k < 12; k++) {
-          //   for (l = 0; l < 5; l++) {
-          //     dist[i][k][l] += dist[j][k][l];
-          //   }
-          // }
+          for (int k = 0; k < 12; k++) {
+            for (int l = 0; l < 5; l++) {
+              globals.dist[i][k][l] += globals.dist[j][k][l];
+            }
+          }
 
-          // dist.splice(j, 1);
+          globals.dist.removeRange(j, j + 1);
           globals.vertices.removeRange(j, j + 1);
           count++;
           j -= 1;
         }
       }
       // if (count < 2) coast_verts.push(i);
+    }
+  }
+
+  //constructs an undirected graph of all vertices and edges
+  void constructGraph() {
+    int numVerts = globals.vertices.length;
+    Graph g = new Graph(numVerts);
+    for (int i = 0; i < numVerts; i++) {
+      g.addVertex(i);
+    }
+    for (int i = 0; i < numVerts; i++) {
+      List adj = getAdj(i);
+      for (int j = 0; j < adj.length; j++) {
+        if (adj[j] > i) {
+          g.addEdge(i, adj[j]);
+        }
+      }
+    }
+    // g.printGraph();
+  }
+
+//checks the possible adjacent vertices and returns their indeces
+  List getAdj(i) {
+    List adj = [];
+    double xi = globals.vertices[i][0];
+    double yi = globals.vertices[i][1];
+    double x = xi;
+    double y = yi - globals.r;
+    double up = -globals.r / 2;
+    double right = (sqrt(3) * globals.r) / 2;
+    for (int k = 0; k < 6; k++) {
+      if (k == 1) {
+        y = yi + globals.r;
+      } else if (k == 2) {
+        x = xi + right;
+        y = yi + up;
+      } else if (k == 3) {
+        y = yi - up;
+      } else if (k == 4) {
+        x = xi - right;
+      } else if (k == 5) {
+        y = yi + up;
+      }
+      for (int j = 0; j < globals.vertices.length; j++) {
+        if ((globals.vertices[j][0]).round() == (x).round() &&
+            (globals.vertices[j][1]).round() == (y).round()) {
+          adj.add(j);
+        }
+      }
+    }
+    return adj;
+  }
+
+//draws circles at vertices (used in debugging)
+  void drawVertices() {
+    for (int i = 0; i < globals.vertices.length; i++) {
+      Rect cirRect = Rect.fromCircle(
+          center: Offset(globals.vertices[i][0], globals.vertices[i][1]),
+          radius: globals.r * 0.3);
+      var paint = Paint()..color = Colors.black;
+      bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+    }
+    int target = 10;
+    Rect cirRect = Rect.fromCircle(
+        center:
+            Offset(globals.vertices[target][0], globals.vertices[target][1]),
+        radius: globals.r * 0.3);
+    var paint = Paint()..color = Colors.red;
+    bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+    List adj = getAdj(target);
+    for (int i = 0; i < adj.length; i++) {
+      Rect cirRect = Rect.fromCircle(
+          center:
+              Offset(globals.vertices[adj[i]][0], globals.vertices[adj[i]][1]),
+          radius: globals.r * 0.3);
+      var paint = Paint()..color = Colors.white;
+      bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+    }
+  }
+}
+
+class Graph {
+  int noOfVertices;
+  Map adjList;
+  Graph(noOfVertices) {
+    this.noOfVertices = noOfVertices;
+    this.adjList = new Map();
+  }
+
+  addVertex(v) {
+    // initialize the adjacency list
+    this.adjList[v] = [];
+  }
+
+  addEdge(v, w) {
+    this.adjList[v].add(w);
+    this.adjList[w].add(v);
+  }
+
+  getAdj(key) {
+    List temp = [];
+    for (int j in this.adjList[key]) temp.add(j);
+    return temp;
+  }
+
+  printGraph() {
+    // get all the vertices
+    var getKeys = this.adjList.keys;
+
+    // iterate over the vertices
+    for (int i in getKeys) {
+      var getValues = this.adjList[i];
+      String conc = "";
+
+      for (int j in getValues) conc += j.toString() + " ";
+
+      // print the vertex and its adjacency list
+      print(i.toString() + " -> " + conc);
+    }
+  }
+
+  dfs(startingNode) {
+    List visited = [];
+    List verts = [];
+    for (var i = 0; i < this.noOfVertices; i++) visited[i] = false;
+
+    this.dfsUtil(startingNode, visited);
+    for (var n = 0; n < visited.length; n++) {
+      if (visited[n]) verts.add(n);
+    }
+    return verts;
+  }
+
+  dfsUtil(vert, visited) {
+    visited[vert] = true;
+
+    var getNeighbors = this.adjList[vert];
+
+    for (var i in getNeighbors) {
+      var getElem = getNeighbors[i];
+      if (!visited[getElem]) this.dfsUtil(getElem, visited);
     }
   }
 }
