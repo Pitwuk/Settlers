@@ -2,6 +2,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:html' as html;
+import 'dart:math';
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +10,7 @@ import 'package:settlers_flutter/models/game.dart';
 
 import 'package:settlers_flutter/repositories/repositories.dart';
 import 'package:settlers_flutter/bloc/bloc.dart';
+import 'globals.dart' as globals;
 
 final appContainer = html.window.document.getElementById('app-container');
 const colors = {
@@ -19,7 +21,9 @@ const colors = {
   'b': Color(0xff693117),
   'w': Color(0xffb39a2d),
   'f': Color(0xff063300),
-  'r': Color(0xffc4bf98)
+  'r': Color(0xffc4bf98),
+  'water': Color(0xff253d4b),
+  'offwhite': Color(0xffe9dfb5)
 };
 
 final GameRepository repository = GameRepository(
@@ -53,7 +57,8 @@ class Menu extends StatelessWidget {
       '/names/2': (context) => InputNames(2),
       '/names/3': (context) => InputNames(3),
       '/names/4': (context) => InputNames(4),
-      '/order': (context) => OrderScreen()
+      '/order': (context) => OrderScreen(),
+      '/local/game': (context) => StartLocalGame()
     });
   }
 }
@@ -378,24 +383,37 @@ class _NameFormState extends State<NameForm> {
   }
 }
 
-class OrderScreen extends StatelessWidget {
+class OrderScreen extends StatefulWidget {
+  @override
+  _OrderScreen createState() {
+    return _OrderScreen();
+  }
+}
+
+class _OrderScreen extends State<OrderScreen> {
+  void _showGameScreen() {
+    Navigator.of(context).pushNamed('/local/game');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: colors['beige'],
         body: Stack(children: <Widget>[
-          Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  width: 7.0,
-                  color: colors['brown'],
-                ),
-              ),
-              child: Align(
-                  alignment: Alignment(0, -0.7),
-                  child: (Text('Player Order:',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 40.0))))),
+          GestureDetector(
+              onTap: _showGameScreen,
+              child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      width: 7.0,
+                      color: colors['brown'],
+                    ),
+                  ),
+                  child: Align(
+                      alignment: Alignment(0, -0.7),
+                      child: (Text('Player Order:',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 40.0)))))),
           BlocProvider(
             create: (BuildContext context) => GameBloc(
                 repository: repository, ke: '%player_order%', value: null),
@@ -434,6 +452,150 @@ class OrderScreen extends StatelessWidget {
   }
 }
 
+class StartLocalGame extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: GameBoard(),
+      child: Stack(
+        children: <Widget>[
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                width: 7.0,
+                color: colors['brown'],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class GameBoard extends CustomPainter {
+  var bgCanvas, resNums, robberLoc;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    //initialize the drawing variables
+    globals.w = size.width;
+    globals.h = size.height;
+    bgCanvas = canvas;
+    globals.refscale = (globals.w < globals.h) ? globals.w : globals.h;
+    globals.r = globals.refscale * .08;
+
+    //draw background
+    var rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()..color = colors['water'],
+    );
+    //initialize the tiles
+
+    if (globals.tiles == null) {
+      initTiles();
+      print('Initializing Tiles...');
+      UpdateGame(repository: repository)
+          .update('tiles', globals.tiles.toString());
+    }
+    drawTiles();
+  }
+
+  @override
+  bool shouldRepaint(GameBoard oldDelegate) => false;
+
+  //initializes the tiles
+  void initTiles() {
+    globals.tiles = {};
+    var resArr = [
+      "s",
+      "s",
+      "s",
+      "s",
+      "o",
+      "o",
+      "o",
+      "b",
+      "b",
+      "b",
+      "w",
+      "w",
+      "w",
+      "w",
+      "f",
+      "f",
+      "f",
+      "f",
+      "r",
+    ]; //stored possible resources s=sheep, o=ore, b=brick,w=wheat,f=forest,r=robber
+    resNums = {0: "s", 1: "o", 2: "b", 3: "w", 4: "f"};
+
+    var startlen = resArr.length;
+    var rand = Random();
+    for (int i = 0; i < startlen; i++) {
+      int ind = (rand.nextDouble() * resArr.length).floor();
+      var newRes = resArr[ind];
+      resArr.removeRange(ind, ind + 1);
+      int diceNum = (rand.nextDouble() * 10 + 3).floor();
+      if (diceNum == 7) diceNum = 2;
+      globals.tiles[i] = [newRes, diceNum];
+      if (newRes == "r") robberLoc = i;
+    }
+  }
+
+  //draws all of the game tiles in the standard 3-4-5-4-3 config with the resource color and number chips
+  void drawTiles() {
+    double xi = globals.w / 2 - globals.right * 4; // hexagon x
+    double yi = globals.h / 2 - globals.down * 2; // hexagon y
+    double x = xi;
+    double y = yi;
+    for (int i = 0; i < globals.tiles.length; i++) {
+      if (i == 3 || i == 7) {
+        xi -= globals.right;
+        x = xi;
+        y += globals.down;
+      } else if (i == 12 || i == 16) {
+        xi += globals.right;
+        x = xi;
+        y += globals.down;
+      }
+      x += globals.right * 2;
+
+      drawHexagon(x, y, i);
+      // tile_centers[i] = [x, y];
+      if (globals.tiles[i][0] != "r") {
+        Rect cirRect =
+            Rect.fromCircle(center: Offset(x, y), radius: globals.r * 0.3);
+        var paint = Paint()..color = colors['offwhite'];
+        bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+        TextSpan span = new TextSpan(
+            style:
+                new TextStyle(color: Colors.black, fontSize: globals.r * 0.2),
+            text: globals.tiles[i][1].toString());
+        TextPainter tp = new TextPainter(
+            text: span,
+            textScaleFactor: 2,
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.ltr);
+        tp.layout();
+        tp.paint(bgCanvas, new Offset(x - (tp.width / 2), y - (tp.height / 2)));
+      }
+    }
+  }
+
+// draws a hexagon at the given position with a given tile
+  void drawHexagon(x, y, tile) {
+    var paint = Paint()..color = colors[globals.tiles[tile][0]];
+
+    final hex = Path();
+    hex.moveTo(globals.hexagon[0] + x, globals.hexagon[1] + y);
+    for (int i = 2; i < globals.hexagon.length - 1; i += 2) {
+      hex.lineTo(globals.hexagon[i] + x, globals.hexagon[i + 1] + y);
+    }
+    bgCanvas.drawPath(hex, paint);
+  }
+}
 //put to api basic example
 // @override
 //   Widget build(BuildContext context) {

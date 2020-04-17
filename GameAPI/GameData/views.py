@@ -9,6 +9,7 @@ from django.core import serializers
 from django.conf import settings
 import json
 import random
+import ast
 
 file = 'GameData/game_data_format_example.json'
 with open(file) as f:
@@ -19,8 +20,10 @@ with open(file) as f:
 def GameData(new_data):
     if new_data.method == 'PUT':
         try:
+
             new_data = json.load(new_data)
             print(new_data)
+
             for key in new_data:
                 if '/' in key:  # enter data into objects within objects
                     key_arr = key.split('/')
