@@ -1,6 +1,7 @@
 import 'dart:math';
 
 //canvas variables
+
 double w, h, refscale, r;
 
 //local game player variables
@@ -26,6 +27,10 @@ var tiles; // hashmap of tiles with coordinate : [resource, dice num]
 List vertices = [];
 var vertGraph;
 List coastVerts = [];
+List vertexXs = [], vertexYs = [], possVerts = [], unsortedYs = [];
+Map portMap = {};
+double storedNx;
+double vertexXd;
 List dist = [];
 Map resourceIndex = {'s': 0, 'o': 1, 'b': 2, 'w': 3, 'f': 4};
 int robberLoc;

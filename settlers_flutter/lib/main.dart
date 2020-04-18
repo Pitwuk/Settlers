@@ -24,7 +24,9 @@ const colors = {
   'r': Color(0xffc4bf98),
   'water': Color(0xff253d4b),
   'offwhite': Color(0xffe9dfb5),
-  'sand': Color(0xfffff3bd)
+  'sand': Color(0xfffff3bd),
+  'selection': Color(0x9fcfcfcf),
+  'boardwalk': Color(0xff5a4832)
 };
 
 final GameRepository repository = GameRepository(
@@ -497,63 +499,81 @@ class _OrderScreen extends State<OrderScreen> {
 class StartLocalGame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: GameBoard(),
-      child: Stack(
-        children: <Widget>[
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(
-                width: 7.0,
-                color: colors['brown'],
-              ),
+    return Stack(
+      children: <Widget>[
+        CustomPaint(painter: GameBoard(), child: Container()),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              width: 7.0,
+              color: colors['brown'],
             ),
           ),
-        ],
-      ),
+        )
+        // ,
+        // PlaceGamePiece()
+      ],
     );
   }
 }
 
 class GameBoard extends CustomPainter {
-  var bgCanvas;
+  Canvas bgCanvas;
 
   @override
   void paint(Canvas canvas, Size size) {
+    bgCanvas = canvas;
     //initialize the drawing variables
     globals.w = size.width;
     globals.h = size.height;
-    bgCanvas = canvas;
     globals.refscale = (globals.w < globals.h) ? globals.w : globals.h;
     globals.r = globals.refscale * .08;
-
-    //draw background
-    var rect = Offset.zero & size;
-    canvas.drawRect(
-      rect,
-      Paint()..color = colors['water'],
-    );
-    //initialize the tiles
-
     if (globals.tiles == null) {
+      //draw background
+      var rect = Offset.zero & size;
+      canvas.drawRect(
+        rect,
+        Paint()..color = colors['water'],
+      );
+      //initialize the tiles
       initTiles();
       print('Initializing Tiles...');
+
+      drawTiles();
+      removeDuplicates();
+      if (globals.gametype == 'online') {
+        //pass to api
+        UpdateGame(repository: repository)
+            .update('tiles', globals.tiles.toString());
+      }
+      // drawVertices();
+      constructGraph();
+      // print(globals.coastVerts);
+      drawCoast();
+      vertexXs();
+    } else {
+      var rect = Offset.zero & size;
+      canvas.drawRect(
+        rect,
+        Paint()..color = colors['water'],
+      );
+      drawTiles();
+      drawCoast();
     }
-    drawTiles();
-    removeDuplicates();
-    if (globals.gametype == 'online') {
-      //pass to api
-      UpdateGame(repository: repository)
-          .update('tiles', globals.tiles.toString());
-    }
-    // drawVertices();
-    constructGraph();
-    print(globals.coastVerts);
-    drawCoast();
   }
 
   @override
   bool shouldRepaint(GameBoard oldDelegate) => false;
+
+//sets a list of all vertex xs for use by gamepeice placement
+  void vertexXs() {
+    for (int i = 0; i < globals.vertices.length; i++) {
+      if (!globals.vertexXs.contains(globals.vertices[i][0].round()))
+        globals.vertexXs.add(globals.vertices[i][0].round());
+    }
+    globals.vertexXs.sort();
+    globals.vertexXd = globals.vertexXs[1] - globals.vertexXs[0];
+  }
 
   //initializes the tiles
   void initTiles() {
@@ -672,14 +692,12 @@ class GameBoard extends CustomPainter {
     }
     globals.coastVerts = covered;
 
-    // draw_stand_harbors();
+    drawHarbors();
     var paint = Paint()
       ..color = colors['sand']
       ..style = PaintingStyle.stroke
       ..strokeWidth = globals.refscale * .006;
     final shore = Path();
-    // bg_ctx.lineWidth = refscale * 0.003;
-    // bg_ctx.beginPath();
     shore.moveTo(globals.vertices[globals.coastVerts[0]][0],
         globals.vertices[globals.coastVerts[0]][1]);
     for (int i = 1; i < globals.coastVerts.length; i++)
@@ -690,7 +708,283 @@ class GameBoard extends CustomPainter {
     bgCanvas.drawPath(shore, paint);
   }
 
-  //removes overlapping vertices
+  //Calls draw harbor for each harbor in the standard board
+  void drawHarbors() {
+    drawHarbor(globals.coastVerts[1], globals.coastVerts[2], "w");
+    drawHarbor(globals.coastVerts[5], globals.coastVerts[6], "o");
+    drawHarbor(globals.coastVerts[8], globals.coastVerts[9], null);
+    drawHarbor(globals.coastVerts[11], globals.coastVerts[12], "s");
+    drawHarbor(globals.coastVerts[15], globals.coastVerts[16], null);
+    drawHarbor(globals.coastVerts[18], globals.coastVerts[19], null);
+    drawHarbor(globals.coastVerts[21], globals.coastVerts[22], "b");
+    drawHarbor(globals.coastVerts[25], globals.coastVerts[26], "f");
+    drawHarbor(globals.coastVerts[28], globals.coastVerts[29], null);
+  }
+
+  // draws a harbor at the given globals.vertices with the given resource
+  void drawHarbor(pv1, pv2, res) {
+    List inds = [null, "s", "o", "b", "w", "f"];
+    //make v1 south of v2
+    int v1, v2;
+    if (globals.vertices[pv1][1] < globals.vertices[pv2][1]) {
+      v1 = pv2;
+      v2 = pv1;
+    } else {
+      v1 = pv1;
+      v2 = pv2;
+    }
+    globals.portMap[v1] = inds.indexOf(res);
+    globals.portMap[v2] = inds.indexOf(res);
+
+    double bwW = globals.r / 5; // boardwalk width
+    double bwL = globals.r / 2; // boardwalk length
+    Paint paint = Paint()..color = colors['boardwalk'];
+
+    if (harborDirection(v1, v2) == "E" || harborDirection(v1, v2) == "W") {
+      if (harborDirection(v1, v2) == "W") bwL = -bwL;
+      bgCanvas.drawRect(
+          Rect.fromLTWH(
+              globals.vertices[v2][0], globals.vertices[v2][1], bwL, bwW),
+          paint);
+      bgCanvas.drawRect(
+          Rect.fromLTWH(
+              globals.vertices[v2][0], globals.vertices[v1][1] - bwW, bwL, bwW),
+          paint);
+      Rect cirRect = Rect.fromCircle(
+          center: Offset(globals.vertices[v2][0] + bwL * 2,
+              globals.vertices[v2][1] + globals.r / 2),
+          radius: globals.r * 0.3);
+      paint = Paint()..color = colors['offwhite'];
+      bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+
+      if (res == null) {
+        //question mark
+        TextSpan span = TextSpan(
+            style: TextStyle(color: colors['brown'], fontSize: globals.r * 0.2),
+            text: '?');
+        TextPainter tp = TextPainter(
+            text: span, textScaleFactor: 1.3, textDirection: TextDirection.ltr);
+        tp.layout();
+        tp.paint(
+            bgCanvas,
+            Offset(globals.vertices[v2][0] + bwL * 2 - (tp.width / 2),
+                globals.vertices[v2][1] + globals.r / 2 - (tp.height)));
+        //price
+        span = TextSpan(
+            style: TextStyle(color: colors['brown'], fontSize: globals.r * 0.2),
+            text: '3:1');
+        tp = TextPainter(
+            text: span, textScaleFactor: 1.3, textDirection: TextDirection.ltr);
+        tp.layout();
+        tp.paint(
+            bgCanvas,
+            Offset(globals.vertices[v2][0] + bwL * 2 - (tp.width / 2),
+                globals.vertices[v2][1] + globals.r / 2));
+      } else {
+        //circle
+        paint = Paint()..color = colors[res];
+        Rect cirRect = Rect.fromCircle(
+            center: Offset(globals.vertices[v2][0] + bwL * 2,
+                globals.vertices[v2][1] + globals.r / 2 - globals.r * 0.15),
+            radius: globals.r * 0.15);
+        bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+        //text
+        TextSpan span = TextSpan(
+            style: TextStyle(color: colors['brown'], fontSize: globals.r * 0.2),
+            text: '2:1');
+        TextPainter tp = TextPainter(
+            text: span, textScaleFactor: 1.3, textDirection: TextDirection.ltr);
+        tp.layout();
+        tp.paint(
+            bgCanvas,
+            Offset(globals.vertices[v2][0] + bwL * 2 - (tp.width / 2),
+                globals.vertices[v2][1] + globals.r / 2));
+      }
+    } else {
+      //harbor at angle (default NE)
+      //boardwalk 1
+      int angle;
+      if (harborDirection(v1, v2) == "SE")
+        angle = 150;
+      else if (harborDirection(v1, v2) == "SW") {
+        angle = 210;
+        v2 = v1;
+      } else if (harborDirection(v1, v2) == "NW") {
+        angle = -30;
+        v2 = v1;
+      } else
+        angle = 30;
+      final bw1 = Path();
+      var paint = Paint()..color = colors['boardwalk'];
+      bw1.moveTo(globals.vertices[v2][0], globals.vertices[v2][1]);
+      bw1.lineTo(globals.vertices[v2][0] + sin((pi / 180) * angle) * bwL,
+          globals.vertices[v2][1] - cos((pi / 180) * angle) * bwL);
+      bw1.lineTo(
+          globals.vertices[v2][0] +
+              sin((pi / 180) * angle) * bwL +
+              cos((pi / 180) * angle) * bwW,
+          globals.vertices[v2][1] -
+              cos((pi / 180) * angle) * bwL +
+              sin((pi / 180) * angle) * bwW);
+      bw1.lineTo(globals.vertices[v2][0] + cos((pi / 180) * angle) * bwW,
+          globals.vertices[v2][1] + sin((pi / 180) * angle) * bwW);
+      bw1.lineTo(globals.vertices[v2][0], globals.vertices[v2][1]);
+      bgCanvas.drawPath(bw1, paint);
+      // // boardwalk 2
+      final bw2 = Path();
+      bw2.moveTo(
+          globals.vertices[v2][0] + cos((pi / 180) * angle) * (globals.r - bwW),
+          globals.vertices[v2][1] +
+              sin((pi / 180) * angle) * (globals.r - bwW));
+      bw2.lineTo(
+          globals.vertices[v2][0] +
+              cos((pi / 180) * angle) * (globals.r - bwW) +
+              sin((pi / 180) * angle) * bwL,
+          globals.vertices[v2][1] +
+              sin((pi / 180) * angle) * (globals.r - bwW) -
+              cos((pi / 180) * angle) * bwL);
+      bw2.lineTo(
+          globals.vertices[v2][0] +
+              cos((pi / 180) * angle) * (globals.r - bwW) +
+              sin((pi / 180) * angle) * bwL +
+              cos((pi / 180) * angle) * bwW,
+          globals.vertices[v2][1] +
+              sin((pi / 180) * angle) * (globals.r - bwW) -
+              cos((pi / 180) * angle) * bwL +
+              sin((pi / 180) * angle) * bwW);
+      bw2.lineTo(
+          globals.vertices[v2][0] +
+              cos((pi / 180) * angle) * (globals.r - bwW) +
+              cos((pi / 180) * angle) * bwW,
+          globals.vertices[v2][1] +
+              sin((pi / 180) * angle) * (globals.r - bwW) +
+              sin((pi / 180) * angle) * bwW);
+      bw2.lineTo(
+          globals.vertices[v2][0] + cos((pi / 180) * angle) * (globals.r - bwW),
+          globals.vertices[v2][1] +
+              sin((pi / 180) * angle) * (globals.r - bwW));
+      bgCanvas.drawPath(bw2, paint);
+      // //port function circle
+      Rect cirRect = Rect.fromCircle(
+          center: Offset(
+              globals.vertices[v2][0] +
+                  sin((pi / 180) * (angle + 30)) *
+                      sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2)),
+              globals.vertices[v2][1] -
+                  cos((pi / 180) * (angle + 30)) *
+                      sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2))),
+          radius: globals.r * 0.3);
+      paint = Paint()..color = colors['offwhite'];
+      bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+      // port function resource and text
+      if (res == null) {
+        //question mark
+        TextSpan span = TextSpan(
+            style: TextStyle(color: colors['brown'], fontSize: globals.r * 0.2),
+            text: '?');
+        TextPainter tp = TextPainter(
+            text: span, textScaleFactor: 1.3, textDirection: TextDirection.ltr);
+        tp.layout();
+        tp.paint(
+            bgCanvas,
+            Offset(
+                (globals.vertices[v2][0] +
+                        sin((pi / 180) * (angle + 30)) *
+                            sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2))) -
+                    (tp.width / 2),
+                (globals.vertices[v2][1] -
+                        cos((pi / 180) * (angle + 30)) *
+                            sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2))) -
+                    (tp.height)));
+        //price
+        span = TextSpan(
+            style: TextStyle(color: colors['brown'], fontSize: globals.r * 0.2),
+            text: '3:1');
+        tp = TextPainter(
+            text: span, textScaleFactor: 1.3, textDirection: TextDirection.ltr);
+        tp.layout();
+        tp.paint(
+            bgCanvas,
+            Offset(
+                (globals.vertices[v2][0] +
+                        sin((pi / 180) * (angle + 30)) *
+                            sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2))) -
+                    (tp.width / 2),
+                (globals.vertices[v2][1] -
+                    cos((pi / 180) * (angle + 30)) *
+                        sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2)))));
+      } else {
+        //circle
+        paint = Paint()..color = colors[res];
+        Rect cirRect = Rect.fromCircle(
+            center: Offset(
+                (globals.vertices[v2][0] +
+                    sin((pi / 180) * (angle + 30)) *
+                        sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2))),
+                (globals.vertices[v2][1] -
+                        cos((pi / 180) * (angle + 30)) *
+                            sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2))) -
+                    (globals.r * 0.15)),
+            radius: globals.r * 0.15);
+        bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+        //text
+        TextSpan span = TextSpan(
+            style: TextStyle(color: colors['brown'], fontSize: globals.r * 0.2),
+            text: '2:1');
+        TextPainter tp = TextPainter(
+            text: span, textScaleFactor: 1.3, textDirection: TextDirection.ltr);
+        tp.layout();
+        tp.paint(
+            bgCanvas,
+            Offset(
+                (globals.vertices[v2][0] +
+                        sin((pi / 180) * (angle + 30)) *
+                            sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2))) -
+                    (tp.width / 2),
+                (globals.vertices[v2][1] -
+                    cos((pi / 180) * (angle + 30)) *
+                        sqrt(pow(globals.r / 2, 2) + pow(bwL * 2, 2)))));
+      }
+    }
+  }
+
+  //determines the direction of the coast
+  String harborDirection(int v1, int v2) {
+    var right = (sqrt(3) * globals.r) / 2;
+    if ((globals.vertices[v1][0]).round() ==
+        (globals.vertices[v2][0]).round()) {
+      if ((globals.vertices[globals
+                      .coastVerts[globals.coastVerts.indexOf(v2) + 1]][0])
+                  .round() ==
+              (globals.vertices[v2][0] + right).round() ||
+          (globals.vertices[globals
+                      .coastVerts[globals.coastVerts.indexOf(v1) - 1]][0])
+                  .round() ==
+              (globals.vertices[v2][0] + right).round())
+        return "W";
+      else
+        return "E";
+    } else {
+      String dir = "";
+
+      if ((globals.vertices[v1][1]).round() < globals.h / 2) dir = "N";
+
+      if ((globals.vertices[v1][0] - right).round() ==
+          (globals.vertices[v2][0]).round()) {
+        if (dir == "N")
+          dir = "NE";
+        else
+          dir = "SW";
+      } else if (dir == "N") {
+        dir = "NW";
+      } else {
+        dir = "SE";
+      }
+      return dir;
+    }
+  }
+
+  //removes overlapping globals.vertices
   void removeDuplicates() {
     for (int i = 0; i < globals.vertices.length; i++) {
       int count = 0;
@@ -715,7 +1009,7 @@ class GameBoard extends CustomPainter {
     }
   }
 
-  //constructs an undirected graph of all vertices and edges
+  //constructs an undirected graph of all globals.vertices and edges
   void constructGraph() {
     int numVerts = globals.vertices.length;
     globals.vertGraph = new Graph(numVerts);
@@ -733,7 +1027,7 @@ class GameBoard extends CustomPainter {
     // globals.vertGraph.printGraph();
   }
 
-//checks the possible adjacent vertices and returns their indeces
+//checks the possible adjacent globals.vertices and returns their indeces
   List getAdj(i) {
     List adj = [];
     double xi = globals.vertices[i][0];
@@ -765,7 +1059,7 @@ class GameBoard extends CustomPainter {
     return adj;
   }
 
-//draws circles at vertices (used in debugging)
+//draws circles at globals.vertices (used in debugging)
   void drawVertices() {
     for (int i = 0; i < globals.vertices.length; i++) {
       Rect cirRect = Rect.fromCircle(
@@ -818,10 +1112,10 @@ class Graph {
   }
 
   printGraph() {
-    // get all the vertices
+    // get all the globals.vertices
     var getKeys = this.adjList.keys;
 
-    // iterate over the vertices
+    // iterate over the globals.vertices
     for (int i in getKeys) {
       var getValues = this.adjList[i];
       String conc = "";
@@ -857,6 +1151,126 @@ class Graph {
   }
 }
 
+class PlaceGamePiece extends StatefulWidget {
+  _PlacePiece createState() {
+    return _PlacePiece();
+  }
+}
+
+class _PlacePiece extends State<PlaceGamePiece> {
+  int _enterCounter = 0;
+  int _exitCounter = 0;
+  double x = 0.0;
+  double y = 0.0;
+
+  void _incrementEnter(PointerEvent details) {
+    setState(() {
+      _enterCounter++;
+    });
+  }
+
+  void _incrementExit(PointerEvent details) {
+    setState(() {
+      _exitCounter++;
+    });
+  }
+
+  void _updateLocation(PointerEvent details) {
+    setState(() {
+      x = details.position.dx;
+      y = details.position.dy;
+    });
+    // print(x);
+  }
+
+  Widget build(BuildContext context) {
+    return CustomPaint(
+        painter: DrawGamePieces(x, y),
+        child: MouseRegion(
+            onEnter: _incrementEnter,
+            onHover: _updateLocation,
+            onExit: _incrementExit));
+  }
+}
+
+class DrawGamePieces extends CustomPainter {
+  Canvas gpCanvas;
+  double x, y;
+  DrawGamePieces(this.x, this.y);
+
+  void paint(Canvas canvas, Size size) {
+    gpCanvas = canvas;
+    var rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()..color = Colors.transparent,
+    );
+    findX();
+  }
+
+  void findX() {
+    double nearestX, nearestY;
+    var nearestVert;
+    bool found = false;
+    var paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = globals.refscale * .006;
+    //find nearest x
+    for (int i = 0; i < globals.vertexXs.length; i++) {
+      if (x < globals.vertexXs[i] + globals.vertexXd / 2) {
+        nearestX = globals.vertexXs[i];
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      nearestX = globals.vertexXs[globals.vertexXs.length - 1];
+    }
+    gpCanvas.drawLine(Offset(nearestX, 0), Offset(nearestX, globals.h), paint);
+
+    //find nearest y
+    if (globals.storedNx != nearestX) {
+      //list of possible
+      globals.vertexYs = [];
+      globals.possVerts = [];
+      for (int i = 0; i < globals.vertices.length; i++) {
+        if (globals.vertices[i][0].round() == nearestX &&
+            !globals.vertexYs.contains(globals.vertices[i][1].round())) {
+          globals.vertexYs.add(globals.vertices[i][1].round());
+          globals.possVerts.add(i);
+        }
+      }
+      globals.unsortedYs = [...globals.vertexYs];
+      globals.vertexYs.sort();
+    }
+    //find nearest
+    found = false;
+    for (int i = 0; i < globals.vertexYs.length - 1; i++) {
+      if (y <
+          globals.vertexYs[i] +
+              (globals.vertexYs[i + 1] - globals.vertexYs[i]) / 2) {
+        nearestY = globals.vertexYs[i];
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      nearestY = globals.vertexYs[globals.vertexYs.length - 1];
+    }
+    gpCanvas.drawLine(Offset(0, nearestY), Offset(globals.w, nearestY), paint);
+    nearestVert = globals.possVerts[globals.unsortedYs.indexOf(nearestY)];
+    globals.storedNx = nearestX;
+
+    double sW = globals.refscale * 0.03;
+    double sH = globals.refscale * 0.05;
+    paint = Paint()..color = colors['selection'];
+    Rect rect = Rect.fromLTWH(nearestX - sW / 2, nearestY - sH / 2, sW, sH);
+    gpCanvas.drawRect(rect, paint);
+  }
+
+  bool shouldRepaint(DrawGamePieces oldDelegate) => true;
+}
 //put to api basic example
 // @override
 //   Widget build(BuildContext context) {
