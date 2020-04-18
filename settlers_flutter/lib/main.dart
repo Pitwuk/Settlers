@@ -23,7 +23,8 @@ const colors = {
   'f': Color(0xff063300),
   'r': Color(0xffc4bf98),
   'water': Color(0xff253d4b),
-  'offwhite': Color(0xffe9dfb5)
+  'offwhite': Color(0xffe9dfb5),
+  'sand': Color(0xfffff3bd)
 };
 
 final GameRepository repository = GameRepository(
@@ -545,9 +546,10 @@ class GameBoard extends CustomPainter {
       UpdateGame(repository: repository)
           .update('tiles', globals.tiles.toString());
     }
-    drawVertices();
+    // drawVertices();
     constructGraph();
-    print(globals.dist);
+    print(globals.coastVerts);
+    drawCoast();
   }
 
   @override
@@ -654,6 +656,40 @@ class GameBoard extends CustomPainter {
     bgCanvas.drawPath(hex, paint);
   }
 
+//draws the coast and calls the function to draw the harbors
+  void drawCoast() {
+    List covered = [];
+    covered.add(globals.coastVerts[0]);
+    for (var i = 1; i < globals.coastVerts.length; i++) {
+      List adjList = globals.vertGraph.getAdj(covered[covered.length - 1]);
+      for (var j = 0; j < adjList.length; j++) {
+        if (globals.coastVerts.contains(adjList[j]) &&
+            !covered.contains(adjList[j])) {
+          covered.add(adjList[j]);
+          break;
+        }
+      }
+    }
+    globals.coastVerts = covered;
+
+    // draw_stand_harbors();
+    var paint = Paint()
+      ..color = colors['sand']
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = globals.refscale * .006;
+    final shore = Path();
+    // bg_ctx.lineWidth = refscale * 0.003;
+    // bg_ctx.beginPath();
+    shore.moveTo(globals.vertices[globals.coastVerts[0]][0],
+        globals.vertices[globals.coastVerts[0]][1]);
+    for (int i = 1; i < globals.coastVerts.length; i++)
+      shore.lineTo(globals.vertices[globals.coastVerts[i]][0],
+          globals.vertices[globals.coastVerts[i]][1]);
+    shore.lineTo(globals.vertices[globals.coastVerts[0]][0],
+        globals.vertices[globals.coastVerts[0]][1]);
+    bgCanvas.drawPath(shore, paint);
+  }
+
   //removes overlapping vertices
   void removeDuplicates() {
     for (int i = 0; i < globals.vertices.length; i++) {
@@ -675,26 +711,26 @@ class GameBoard extends CustomPainter {
           j -= 1;
         }
       }
-      // if (count < 2) coast_verts.push(i);
+      if (count < 2) globals.coastVerts.add(i);
     }
   }
 
   //constructs an undirected graph of all vertices and edges
   void constructGraph() {
     int numVerts = globals.vertices.length;
-    Graph g = new Graph(numVerts);
+    globals.vertGraph = new Graph(numVerts);
     for (int i = 0; i < numVerts; i++) {
-      g.addVertex(i);
+      globals.vertGraph.addVertex(i);
     }
     for (int i = 0; i < numVerts; i++) {
       List adj = getAdj(i);
       for (int j = 0; j < adj.length; j++) {
         if (adj[j] > i) {
-          g.addEdge(i, adj[j]);
+          globals.vertGraph.addEdge(i, adj[j]);
         }
       }
     }
-    // g.printGraph();
+    // globals.vertGraph.printGraph();
   }
 
 //checks the possible adjacent vertices and returns their indeces

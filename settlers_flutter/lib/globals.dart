@@ -24,6 +24,8 @@ var playerBlank = {
 String gametype = 'local';
 var tiles; // hashmap of tiles with coordinate : [resource, dice num]
 List vertices = [];
+var vertGraph;
+List coastVerts = [];
 List dist = [];
 Map resourceIndex = {'s': 0, 'o': 1, 'b': 2, 'w': 3, 'f': 4};
 int robberLoc;
