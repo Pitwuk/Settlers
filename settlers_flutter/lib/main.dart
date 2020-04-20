@@ -1363,6 +1363,29 @@ class _UIState extends State<UIWidget> {
                           child: Container()),
                     ],
                   )))),
+      //development card button
+      Positioned(
+          left: globals.w - 20 - globals.refscale * 0.15,
+          top: 20 + globals.refscale * 0.46,
+          child: MouseRegion(
+              onHover: (event) {
+                appContainer.style.cursor = 'pointer';
+              },
+              onExit: (event) {
+                appContainer.style.cursor = 'default';
+              },
+              child: FlatButton(
+                  padding: EdgeInsets.all(0),
+                  color: colors['beige'],
+                  splashColor: colors['brown'],
+                  onPressed: () => print('Dev Cards'),
+                  child: SizedBox(
+                      width: globals.refscale * 0.15,
+                      height: globals.refscale * .21,
+                      child: CustomPaint(
+                        foregroundPainter: DCBackPainter(),
+                        child: Container(),
+                      ))))),
     ]);
   }
 
@@ -1439,7 +1462,7 @@ class DicePainter extends CustomPainter {
         Paint()..color = colors['black']);
   }
 
-  bool shouldRepaint(BuildingCostPainter oldDelegate) => false;
+  bool shouldRepaint(DicePainter oldDelegate) => false;
 }
 
 class BuildingCostPainter extends CustomPainter {
@@ -1548,6 +1571,60 @@ class BuildingCostPainter extends CustomPainter {
   }
 
   bool shouldRepaint(BuildingCostPainter oldDelegate) => false;
+}
+
+class DCBackPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(size.width / 2, size.height / 2),
+            radius: globals.refscale * 0.05),
+        0,
+        2 * pi,
+        true,
+        Paint()..color = Color(0xffb39a2d));
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(size.width / 2, size.height / 2),
+            radius: globals.refscale * 0.0425),
+        0,
+        2 * pi,
+        false,
+        Paint()
+          ..color = Color(0xff7c1e1e)
+          ..strokeWidth = globals.refscale * 0.015
+          ..style = PaintingStyle.stroke);
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(size.width / 2, size.height / 2),
+            radius: globals.refscale * 0.05),
+        pi / 8,
+        (pi * 6) / 8,
+        false,
+        Paint()..color = Color(0xff20195a));
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(size.width / 2, size.height / 2),
+            radius: globals.refscale * 0.012),
+        0,
+        2 * pi,
+        true,
+        Paint()..color = Color(0xff797979));
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(size.width / 2, size.height / 2),
+            radius: globals.refscale * 0.05),
+        0,
+        2 * pi,
+        false,
+        Paint()
+          ..color = Color(0xff797979)
+          ..strokeWidth = globals.refscale * 0.007
+          ..style = PaintingStyle.stroke);
+  }
+
+  bool shouldRepaint(DCBackPainter oldDelegate) => false;
 }
 
 class PlaceGamePiece extends StatefulWidget {
