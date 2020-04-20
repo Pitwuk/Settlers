@@ -26,7 +26,9 @@ const colors = {
   'offwhite': Color(0xffe9dfb5),
   'sand': Color(0xfffff3bd),
   'selection': Color(0x9fcfcfcf),
-  'boardwalk': Color(0xff5a4832)
+  'boardwalk': Color(0xff5a4832),
+  'white': Color(0xffe9e9e9),
+  'black': Color(0xff1d1d1d)
 };
 
 final GameRepository repository = GameRepository(
@@ -61,7 +63,7 @@ class Menu extends StatelessWidget {
       '/names/3': (context) => InputNames(3),
       '/names/4': (context) => InputNames(4),
       '/order': (context) => OrderScreen(),
-      '/local/game': (context) => StartLocalGame()
+      '/local/game': (context) => InitLocalGame()
     });
   }
 }
@@ -496,10 +498,16 @@ class _OrderScreen extends State<OrderScreen> {
   }
 }
 
-class StartLocalGame extends StatelessWidget {
+class InitLocalGame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    var screenSize = MediaQuery.of(context).size;
+    globals.w = screenSize.width;
+    globals.h = screenSize.height;
+    globals.refscale = (globals.w < globals.h) ? globals.w : globals.h;
+    globals.r = globals.refscale * .08;
+    return Scaffold(
+        body: Stack(
       children: <Widget>[
         CustomPaint(painter: GameBoard(), child: Container()),
         Container(
@@ -509,11 +517,10 @@ class StartLocalGame extends StatelessWidget {
               color: colors['brown'],
             ),
           ),
-        )
-        // ,
-        // PlaceGamePiece()
+        ),
+        UIWidget()
       ],
-    );
+    ));
   }
 }
 
@@ -524,10 +531,6 @@ class GameBoard extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     bgCanvas = canvas;
     //initialize the drawing variables
-    globals.w = size.width;
-    globals.h = size.height;
-    globals.refscale = (globals.w < globals.h) ? globals.w : globals.h;
-    globals.r = globals.refscale * .08;
     if (globals.tiles == null) {
       //draw background
       var rect = Offset.zero & size;
@@ -1151,29 +1154,412 @@ class Graph {
   }
 }
 
+class UIWidget extends StatefulWidget {
+  @override
+  _UIState createState() {
+    return _UIState();
+  }
+}
+
+class _UIState extends State<UIWidget> {
+  @override
+  Widget build(BuildContext context) {
+    final double bcW = globals.refscale * 0.3;
+    return Stack(children: <Widget>[
+      //name
+      uiButton(context, 'Name', 20, 20),
+      //dice roll and number rolled
+      Positioned(
+          left: 20,
+          top: 40 + globals.refscale * 0.07,
+          child: MouseRegion(
+              onHover: (event) {
+                appContainer.style.cursor = 'pointer';
+              },
+              onExit: (event) {
+                appContainer.style.cursor = 'default';
+              },
+              child: FlatButton(
+                  padding: EdgeInsets.all(0),
+                  color: Colors.transparent,
+                  splashColor: colors['white'],
+                  onPressed: () => print('Roll'),
+                  child: SizedBox(
+                      width: globals.refscale * .2,
+                      height: globals.refscale * .1333334,
+                      child: CustomPaint(
+                        foregroundPainter: DicePainter(),
+                        child: Container(),
+                      ))))),
+      //trade button
+      uiButton(context, 'Trade', 20, 60 + (globals.refscale * 16) / 75),
+      //end turn button
+      uiButton(context, 'End Turn', 20, 80 + (globals.refscale * 22) / 75),
+      //building cost card
+      Positioned(
+          left: globals.w - bcW - 20,
+          top: 20,
+          child: SizedBox(
+              width: globals.refscale * .3,
+              height: globals.refscale * .44,
+              child: DecoratedBox(
+                  decoration: BoxDecoration(
+                      color: colors['beige'],
+                      border: Border.all(
+                          color: Colors.orange,
+                          width: globals.refscale * 0.01)),
+                  child: Stack(
+                    children: <Widget>[
+                      //title
+                      Align(
+                          alignment: Alignment(0, -0.93),
+                          child: Text(
+                            'Building Costs',
+                            style: TextStyle(
+                                fontSize: globals.refscale * 0.04,
+                                color: colors['brown']),
+                            textAlign: TextAlign.center,
+                          )),
+                      //Road label
+                      Align(
+                          alignment: Alignment(0, -0.617),
+                          child: Container(
+                              margin: EdgeInsets.all(0),
+                              padding: EdgeInsets.all(0),
+                              child: MouseRegion(
+                                  onHover: (event) {
+                                    appContainer.style.cursor = 'pointer';
+                                  },
+                                  onExit: (event) {
+                                    appContainer.style.cursor = 'default';
+                                  },
+                                  child: FlatButton(
+                                      padding: EdgeInsets.all(0),
+                                      color: Colors.transparent,
+                                      splashColor: colors['brown'],
+                                      onPressed: () => print('Road'),
+                                      child: SizedBox(
+                                          width: globals.refscale * .28,
+                                          height: globals.refscale * .085,
+                                          child: Padding(
+                                              padding: EdgeInsets.only(
+                                                  left: globals.refscale * .01,
+                                                  top:
+                                                      globals.refscale * 0.005),
+                                              child: Text('Road',
+                                                  style: TextStyle(
+                                                      fontSize:
+                                                          globals.refscale *
+                                                              0.03,
+                                                      color: colors['brown']),
+                                                  textAlign:
+                                                      TextAlign.left))))))),
+                      //Settlement label
+                      Align(
+                          alignment: Alignment(0, -0.124),
+                          child: Container(
+                              margin: EdgeInsets.all(0),
+                              padding: EdgeInsets.all(0),
+                              child: MouseRegion(
+                                  onHover: (event) {
+                                    appContainer.style.cursor = 'pointer';
+                                  },
+                                  onExit: (event) {
+                                    appContainer.style.cursor = 'default';
+                                  },
+                                  child: FlatButton(
+                                      padding: EdgeInsets.all(0),
+                                      color: Colors.transparent,
+                                      splashColor: colors['brown'],
+                                      onPressed: () => print('Settlement'),
+                                      child: SizedBox(
+                                          width: globals.refscale * .28,
+                                          height: globals.refscale * .085,
+                                          child: Padding(
+                                              padding: EdgeInsets.only(
+                                                  left: globals.refscale * .01,
+                                                  top:
+                                                      globals.refscale * 0.005),
+                                              child: Text('Settlement',
+                                                  style: TextStyle(
+                                                      fontSize:
+                                                          globals.refscale *
+                                                              0.03,
+                                                      color: colors['brown']),
+                                                  textAlign:
+                                                      TextAlign.left))))))),
+                      //City label
+                      Align(
+                          alignment: Alignment(0, 0.37),
+                          child: Container(
+                              margin: EdgeInsets.all(0),
+                              padding: EdgeInsets.all(0),
+                              child: MouseRegion(
+                                  onHover: (event) {
+                                    appContainer.style.cursor = 'pointer';
+                                  },
+                                  onExit: (event) {
+                                    appContainer.style.cursor = 'default';
+                                  },
+                                  child: FlatButton(
+                                      padding: EdgeInsets.all(0),
+                                      color: Colors.transparent,
+                                      splashColor: colors['brown'],
+                                      onPressed: () => print('City'),
+                                      child: SizedBox(
+                                          width: globals.refscale * .28,
+                                          height: globals.refscale * .085,
+                                          child: Padding(
+                                              padding: EdgeInsets.only(
+                                                  left: globals.refscale * .01,
+                                                  top:
+                                                      globals.refscale * 0.005),
+                                              child: Text('City',
+                                                  style: TextStyle(
+                                                      fontSize:
+                                                          globals.refscale *
+                                                              0.03,
+                                                      color: colors['brown']),
+                                                  textAlign:
+                                                      TextAlign.left))))))),
+                      //Development Card label
+                      Align(
+                          alignment: Alignment(0, 0.868),
+                          child: Container(
+                              margin: EdgeInsets.all(0),
+                              padding: EdgeInsets.all(0),
+                              child: MouseRegion(
+                                  onHover: (event) {
+                                    appContainer.style.cursor = 'pointer';
+                                  },
+                                  onExit: (event) {
+                                    appContainer.style.cursor = 'default';
+                                  },
+                                  child: FlatButton(
+                                      padding: EdgeInsets.all(0),
+                                      color: Colors.transparent,
+                                      splashColor: colors['brown'],
+                                      onPressed: () =>
+                                          print('Development Card'),
+                                      child: SizedBox(
+                                          width: globals.refscale * .28,
+                                          height: globals.refscale * .085,
+                                          child: Padding(
+                                              padding: EdgeInsets.only(
+                                                  left: globals.refscale * .01,
+                                                  top:
+                                                      globals.refscale * 0.005),
+                                              child: Text('Development\nCard',
+                                                  style: TextStyle(
+                                                      fontSize:
+                                                          globals.refscale *
+                                                              0.03,
+                                                      color: colors['brown']),
+                                                  textAlign:
+                                                      TextAlign.left))))))),
+                      //building costs costs and lines
+                      CustomPaint(
+                          foregroundPainter: BuildingCostPainter(),
+                          child: Container()),
+                    ],
+                  )))),
+    ]);
+  }
+
+  Widget uiButton(BuildContext context, txt, x, y) {
+    return Positioned(
+        left: x,
+        top: y,
+        child: SizedBox(
+            width: globals.refscale * .3,
+            height: globals.refscale * .08,
+            child: Container(
+                child: MouseRegion(
+                    onHover: (event) {
+                      appContainer.style.cursor = 'pointer';
+                    },
+                    onExit: (event) {
+                      appContainer.style.cursor = 'default';
+                    },
+                    child: FlatButton(
+                      color: colors['beige'],
+                      splashColor: colors['brown'],
+                      onPressed: () => print(txt),
+                      child: AutoSizeText(txt,
+                          style:
+                              TextStyle(fontSize: 30.0, color: colors['brown']),
+                          maxLines: 1),
+                    )))));
+  }
+}
+
+class DicePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+        Rect.fromLTWH(0, 0, globals.refscale * 0.1, globals.refscale * 0.1),
+        Paint()..color = colors['white']);
+    canvas.drawRect(
+        Rect.fromLTWH(globals.refscale * 0.1, globals.refscale * 0.1 / 3,
+            globals.refscale * 0.1, globals.refscale * 0.1),
+        Paint()..color = colors['white']);
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(globals.refscale * 0.05, globals.refscale * 0.05),
+            radius: globals.refscale * 0.01),
+        0,
+        2 * pi,
+        true,
+        Paint()..color = colors['black']);
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(globals.refscale * 0.15, globals.refscale / 12),
+            radius: globals.refscale * 0.01),
+        0,
+        2 * pi,
+        true,
+        Paint()..color = colors['black']);
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(globals.refscale * 0.15 - globals.refscale / 40,
+                globals.refscale / 12 - globals.refscale / 40),
+            radius: globals.refscale * 0.01),
+        0,
+        2 * pi,
+        true,
+        Paint()..color = colors['black']);
+    canvas.drawArc(
+        Rect.fromCircle(
+            center: Offset(globals.refscale * 0.15 + globals.refscale / 40,
+                globals.refscale / 12 + globals.refscale / 40),
+            radius: globals.refscale * 0.01),
+        0,
+        2 * pi,
+        true,
+        Paint()..color = colors['black']);
+  }
+
+  bool shouldRepaint(BuildingCostPainter oldDelegate) => false;
+}
+
+class BuildingCostPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    //separation line 1
+    canvas.drawLine(
+      Offset(globals.refscale * 0.02, size.height * 0.15),
+      Offset(size.width - globals.refscale * 0.02, size.height * 0.15),
+      Paint()
+        ..color = colors['brown']
+        ..strokeWidth = globals.refscale * .003,
+    );
+    //Road Costs
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.06, size.height * 0.24,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['f']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.105, size.height * 0.24,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['b']);
+    //separation line 2
+    canvas.drawLine(
+      Offset(globals.refscale * 0.02, size.height * 0.35),
+      Offset(size.width - globals.refscale * 0.02, size.height * 0.35),
+      Paint()
+        ..color = colors['brown']
+        ..strokeWidth = globals.refscale * .003,
+    );
+    //Settlement Costs
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.06, size.height * 0.44,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['s']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.105, size.height * 0.44,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['w']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.15, size.height * 0.44,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['f']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.195, size.height * 0.44,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['b']);
+    //separation line 3
+    canvas.drawLine(
+      Offset(globals.refscale * 0.02, size.height * 0.55),
+      Offset(size.width - globals.refscale * 0.02, size.height * 0.55),
+      Paint()
+        ..color = colors['brown']
+        ..strokeWidth = globals.refscale * .003,
+    );
+    //City Costs
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.06, size.height * 0.64,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['o']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.105, size.height * 0.64,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['o']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.15, size.height * 0.64,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['o']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.195, size.height * 0.64,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['w']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.24, size.height * 0.64,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['w']);
+    //separation line 4
+    canvas.drawLine(
+      Offset(globals.refscale * 0.02, size.height * 0.75),
+      Offset(size.width - globals.refscale * 0.02, size.height * 0.75),
+      Paint()
+        ..color = colors['brown']
+        ..strokeWidth = globals.refscale * .003,
+    );
+    //Development Card Costs
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.06, size.height * 0.84,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['o']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.105, size.height * 0.84,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['w']);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - globals.refscale * 0.15, size.height * 0.84,
+            globals.refscale * 0.04, globals.refscale * 0.04),
+        Paint()..color = colors['s']);
+    //separation line 5
+    canvas.drawLine(
+      Offset(globals.refscale * 0.02, size.height * 0.95),
+      Offset(size.width - globals.refscale * 0.02, size.height * 0.95),
+      Paint()
+        ..color = colors['brown']
+        ..strokeWidth = globals.refscale * .003,
+    );
+  }
+
+  bool shouldRepaint(BuildingCostPainter oldDelegate) => false;
+}
+
 class PlaceGamePiece extends StatefulWidget {
+  @override
   _PlacePiece createState() {
     return _PlacePiece();
   }
 }
 
 class _PlacePiece extends State<PlaceGamePiece> {
-  int _enterCounter = 0;
-  int _exitCounter = 0;
   double x = 0.0;
   double y = 0.0;
-
-  void _incrementEnter(PointerEvent details) {
-    setState(() {
-      _enterCounter++;
-    });
-  }
-
-  void _incrementExit(PointerEvent details) {
-    setState(() {
-      _exitCounter++;
-    });
-  }
 
   void _updateLocation(PointerEvent details) {
     setState(() {
@@ -1183,18 +1569,24 @@ class _PlacePiece extends State<PlaceGamePiece> {
     // print(x);
   }
 
+  @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-        painter: DrawGamePieces(x, y),
-        child: MouseRegion(
-            onEnter: _incrementEnter,
-            onHover: _updateLocation,
-            onExit: _incrementExit));
+    print('yes');
+    return GestureDetector(
+        onTap: () {
+          setState(() {
+            globals.placeRoad = true;
+          });
+        },
+        child: CustomPaint(
+            painter: DrawGamePieces(x, y),
+            child: MouseRegion(onHover: _updateLocation)));
   }
 }
 
 class DrawGamePieces extends CustomPainter {
   Canvas gpCanvas;
+  // int nearestVert;
   double x, y;
   DrawGamePieces(this.x, this.y);
 
@@ -1205,12 +1597,119 @@ class DrawGamePieces extends CustomPainter {
       rect,
       Paint()..color = Colors.transparent,
     );
-    findX();
+    if (globals.placeSet) {
+      globals.placeSet = false;
+      Paint paint = Paint()..color = colors['selection'];
+      Rect rect = Rect.fromLTWH(
+          globals.vertices[globals.nearestVert][0] - globals.sW / 2,
+          globals.vertices[globals.nearestVert][1] - globals.sH / 2,
+          globals.sW,
+          globals.sH);
+      gpCanvas.drawRect(rect, paint);
+    } else if (globals.placeCit) {
+      globals.placeCit = false;
+      Paint paint = Paint()..color = colors['selection'];
+      Rect rect = Rect.fromLTWH(
+          globals.vertices[globals.nearestVert][0] - globals.sW / 2,
+          globals.vertices[globals.nearestVert][1],
+          globals.sH,
+          globals.sW);
+      gpCanvas.drawRect(rect, paint);
+    } else if (globals.placeRoad) {
+      globals.placeRoad = false;
+      Paint paint = Paint()
+        ..color = colors['selection']
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = globals.refscale * .008;
+      gpCanvas.drawLine(
+          Offset(globals.vertices[globals.nearestVert][0],
+              globals.vertices[globals.nearestVert][1]),
+          Offset(globals.vertices[globals.closest][0],
+              globals.vertices[globals.closest][1]),
+          paint);
+    } else {
+      roadVis();
+    }
   }
 
-  void findX() {
+  void roadVis() {
+    if (!globals.start) {
+      double nearestX, nearestY;
+      bool found = false;
+      //find nearest x
+      for (int i = 0; i < globals.vertexXs.length; i++) {
+        if (x < globals.vertexXs[i] + globals.vertexXd / 2) {
+          nearestX = globals.vertexXs[i];
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        nearestX = globals.vertexXs[globals.vertexXs.length - 1];
+      }
+
+      //find nearest y
+      if (globals.storedNx != nearestX) {
+        //list of possible
+        globals.vertexYs = [];
+        globals.possVerts = [];
+        for (int i = 0; i < globals.vertices.length; i++) {
+          if (globals.vertices[i][0].round() == nearestX &&
+              !globals.vertexYs.contains(globals.vertices[i][1].round())) {
+            globals.vertexYs.add(globals.vertices[i][1].round());
+            globals.possVerts.add(i);
+          }
+        }
+        globals.unsortedYs = [...globals.vertexYs];
+        globals.vertexYs.sort();
+      }
+      //find nearest
+      found = false;
+      for (int i = 0; i < globals.vertexYs.length - 1; i++) {
+        if (y <
+            globals.vertexYs[i] +
+                (globals.vertexYs[i + 1] - globals.vertexYs[i]) / 2) {
+          nearestY = globals.vertexYs[i];
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        nearestY = globals.vertexYs[globals.vertexYs.length - 1];
+      }
+      globals.nearestVert =
+          globals.possVerts[globals.unsortedYs.indexOf(nearestY)];
+      globals.storedNx = nearestX;
+
+      //find nearest adjacent
+      List adj = globals.vertGraph.getAdj(globals.nearestVert);
+      double dist = (x - globals.vertices[adj[0]][0]).abs() +
+          (y - globals.vertices[adj[0]][1]).abs();
+      globals.closest = adj[0];
+      for (int i = 1; i < adj.length; i++) {
+        if ((x - globals.vertices[adj[i]][0]).abs() +
+                (y - globals.vertices[adj[i]][1]).abs() <
+            dist) {
+          dist = (x - globals.vertices[adj[i]][0]).abs() +
+              (y - globals.vertices[adj[i]][1]).abs();
+          globals.closest = adj[i];
+        }
+      }
+      Paint paint = Paint()
+        ..color = colors['selection']
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = globals.refscale * .008;
+      gpCanvas.drawLine(
+          Offset(globals.vertices[globals.nearestVert][0],
+              globals.vertices[globals.nearestVert][1]),
+          Offset(globals.vertices[globals.closest][0],
+              globals.vertices[globals.closest][1]),
+          paint);
+    }
+  }
+
+  void settlementVis() {
     double nearestX, nearestY;
-    var nearestVert;
     bool found = false;
     var paint = Paint()
       ..color = Colors.white
@@ -1227,7 +1726,7 @@ class DrawGamePieces extends CustomPainter {
     if (!found) {
       nearestX = globals.vertexXs[globals.vertexXs.length - 1];
     }
-    gpCanvas.drawLine(Offset(nearestX, 0), Offset(nearestX, globals.h), paint);
+    // gpCanvas.drawLine(Offset(nearestX, 0), Offset(nearestX, globals.h), paint);
 
     //find nearest y
     if (globals.storedNx != nearestX) {
@@ -1258,14 +1757,14 @@ class DrawGamePieces extends CustomPainter {
     if (!found) {
       nearestY = globals.vertexYs[globals.vertexYs.length - 1];
     }
-    gpCanvas.drawLine(Offset(0, nearestY), Offset(globals.w, nearestY), paint);
-    nearestVert = globals.possVerts[globals.unsortedYs.indexOf(nearestY)];
+    // gpCanvas.drawLine(Offset(0, nearestY), Offset(globals.w, nearestY), paint);
+    globals.nearestVert =
+        globals.possVerts[globals.unsortedYs.indexOf(nearestY)];
     globals.storedNx = nearestX;
 
-    double sW = globals.refscale * 0.03;
-    double sH = globals.refscale * 0.05;
     paint = Paint()..color = colors['selection'];
-    Rect rect = Rect.fromLTWH(nearestX - sW / 2, nearestY - sH / 2, sW, sH);
+    Rect rect = Rect.fromLTWH(nearestX - globals.sW / 2,
+        nearestY - globals.sH / 2, globals.sW, globals.sH);
     gpCanvas.drawRect(rect, paint);
   }
 

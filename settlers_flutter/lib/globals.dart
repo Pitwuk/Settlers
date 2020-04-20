@@ -27,12 +27,19 @@ var tiles; // hashmap of tiles with coordinate : [resource, dice num]
 List vertices = [];
 var vertGraph;
 List coastVerts = [];
-List vertexXs = [], vertexYs = [], possVerts = [], unsortedYs = [];
 Map portMap = {};
-double storedNx;
-double vertexXd;
 List dist = [];
 Map resourceIndex = {'s': 0, 'o': 1, 'b': 2, 'w': 3, 'f': 4};
+
+//gamepiece variables
+bool start = false;
+double sW = refscale * 0.03;
+double sH = refscale * 0.05;
+bool placeSet = false, placeCit = false, placeRoad = false;
+List vertexXs = [], vertexYs = [], possVerts = [], unsortedYs = [];
+double storedNx;
+double vertexXd;
+int nearestVert, closest;
 int robberLoc;
 
 //hexagon drawing variables
