@@ -1364,7 +1364,27 @@ class _UIState extends State<UIWidget> {
   }
 
   void _getDevCard() {
-    print('dev carrrddd');
+    setState(() {
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][0]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][1]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][3]--;
+    });
+    int card;
+    int rand = (Random().nextDouble() * 25).floor();
+    if (rand <= 13)
+      card = 0;
+    else if (rand <= 18)
+      card = 1;
+    else if (rand <= 20)
+      card = 2;
+    else if (rand <= 22)
+      card = 3;
+    else
+      card = 4;
+    if (card == 4)
+      globals.players[globals.playerOrder[globals.currPlayer]]['points']++;
+    globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
+        [card]++;
   }
 
   @override
