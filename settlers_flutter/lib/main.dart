@@ -63,6 +63,7 @@ class Menu extends StatelessWidget {
       '/names/3': (context) => InputNames(3),
       '/names/4': (context) => InputNames(4),
       '/order': (context) => OrderScreen(),
+      '/local/colors': (context) => ColorChoice(),
       '/local/game': (context) => InitLocalGame()
     });
   }
@@ -341,6 +342,7 @@ class NameForm extends StatefulWidget {
 
 class _NameFormState extends State<NameForm> {
   final num;
+
   _NameFormState(this.num);
 
   void _showOrderScreen() {
@@ -356,6 +358,35 @@ class _NameFormState extends State<NameForm> {
     super.dispose();
   }
 
+  void _submission() {
+    if (myController.text != '') {
+      var name = myController.text;
+      myController.clear();
+      Scaffold.of(context).showSnackBar(SnackBar(content: Text(name)));
+      if (globals.gametype == 'online')
+        UpdateGame(repository: repository).update("%new_player%", name);
+      else {
+        Map a = new Map();
+        a = {
+          "color": "",
+          "hand": [0, 0, 0, 0, 0],
+          "points": 0,
+          "settlements": [],
+          "roads": [],
+          "road_graph": Graph(50),
+          "road_verts": [],
+          "ports": [],
+          "dev_cards": [0, 0, 0, 0, 0],
+          "used_dev_cards": [0, 0, 0, 0],
+          "longest_road": false,
+          "largest_army": false
+        };
+        globals.players[name] = a;
+        a = null;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     int count = 0;
@@ -364,6 +395,15 @@ class _NameFormState extends State<NameForm> {
         padding: const EdgeInsets.all(30.0),
         child: TextFormField(
           controller: myController,
+          onFieldSubmitted: (value) {
+            if (!globals.players.containsKey(value)) {
+              count++;
+              _submission();
+              if (count == num) {
+                _showOrderScreen();
+              }
+            }
+          },
           decoration: const InputDecoration(labelText: 'Name'),
           validator: (value) {
             if (value.isEmpty) {
@@ -373,24 +413,6 @@ class _NameFormState extends State<NameForm> {
           },
         ),
       ),
-      RaisedButton(
-        onPressed: () {
-          if (myController.text != '') {
-            var name = myController.text;
-            Scaffold.of(context).showSnackBar(SnackBar(content: Text(name)));
-            if (globals.gametype == 'online')
-              UpdateGame(repository: repository).update("%new_player%", name);
-            else {
-              globals.players[name] = globals.playerBlank;
-            }
-            count++;
-            if (count == num) {
-              _showOrderScreen();
-            }
-          }
-        },
-        child: Text('Submit'),
-      )
     ]);
   }
 }
@@ -403,8 +425,8 @@ class OrderScreen extends StatefulWidget {
 }
 
 class _OrderScreen extends State<OrderScreen> {
-  void _showGameScreen() {
-    Navigator.of(context).pushNamed('/local/game');
+  void _showColorScreen() {
+    Navigator.of(context).pushNamed('/local/colors');
   }
 
   @override
@@ -414,7 +436,7 @@ class _OrderScreen extends State<OrderScreen> {
           backgroundColor: colors['beige'],
           body: Stack(children: <Widget>[
             GestureDetector(
-                onTap: _showGameScreen,
+                onTap: _showColorScreen,
                 child: Container(
                     decoration: BoxDecoration(
                       border: Border.all(
@@ -477,7 +499,7 @@ class _OrderScreen extends State<OrderScreen> {
         backgroundColor: colors['beige'],
         body: Stack(children: <Widget>[
           GestureDetector(
-              onTap: _showGameScreen,
+              onTap: _showColorScreen,
               child: Container(
                   decoration: BoxDecoration(
                     border: Border.all(
@@ -498,86 +520,131 @@ class _OrderScreen extends State<OrderScreen> {
   }
 }
 
-class InitLocalGame extends StatelessWidget {
+class ColorChoice extends StatefulWidget {
+  @override
+  _ColorChoice createState() {
+    return _ColorChoice();
+  }
+}
+
+class _ColorChoice extends State<ColorChoice> {
+  List<Color> playerColors = [
+    Color(0xff720000),
+    Color(0xffffffff),
+    Color(0xff3d2707),
+    Color(0xff915700),
+    Color(0xffb3b00f),
+    Color(0xff160b57),
+    Color(0xff3b0b57),
+    Color(0xffa32e99),
+    Color(0xff2ea399),
+    Color(0xff39642e),
+  ];
+  int count = 0;
+  List<Widget> colorButtons = [];
+  List<bool> _buttonDisabled = [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ];
+
+  void _showGameScreen() {
+    Navigator.of(context).pushNamed('/local/game');
+  }
+
+  void _nextPlayer(i) {
+    print(i);
+    globals.players[globals.playerOrder[count]]['color'] = playerColors[i];
+    playerColors[i] = colors['beige'];
+    _buttonDisabled[i] = true;
+    count++;
+    if (count == globals.numPlayers) _showGameScreen();
+  }
+
   @override
   Widget build(BuildContext context) {
     var screenSize = MediaQuery.of(context).size;
     globals.w = screenSize.width;
     globals.h = screenSize.height;
     globals.refscale = (globals.w < globals.h) ? globals.w : globals.h;
-    globals.r = globals.refscale * .08;
-    return Scaffold(
+
+    var x = globals.w / 2 -
+        (globals.w * 0.15 + globals.w * 0.01) * 2 -
+        globals.w * 0.15 / 2;
+    var y = globals.h / 2 - globals.w * 0.1;
+    for (int i = 0; i < 10; i++) {
+      colorButtons.add(colorButton(context, i, x, y));
+      x += globals.w * 0.15 + globals.refscale * 0.01;
+      if (i == 4) {
+        y = globals.h / 2 + globals.refscale * 0.11;
+        x = globals.w / 2 -
+            (globals.w * 0.15 + globals.w * 0.01) * 2 -
+            globals.w * 0.15 / 2;
+      }
+    }
+    if (count == globals.numPlayers) {
+      return Container();
+    } else {
+      return Scaffold(
+        backgroundColor: colors['beige'],
         body: Stack(
-      children: <Widget>[
-        CustomPaint(painter: GameBoard(), child: Container()),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-              width: 7.0,
-              color: colors['brown'],
-            ),
-          ),
+          children: <Widget>[
+            Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    width: 7.0,
+                    color: colors['brown'],
+                  ),
+                ),
+                child: Align(
+                    alignment: Alignment(0, -0.7),
+                    child: (Text(globals.playerOrder[count],
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 40.0))))),
+            Stack(
+              children: colorButtons,
+            )
+          ],
         ),
-        UIWidget()
-      ],
-    ));
+      );
+    }
+  }
+
+  Widget colorButton(BuildContext context, i, x, y) {
+    return Positioned(
+        left: x,
+        top: y,
+        child: SizedBox(
+            width: globals.w * 0.15,
+            height: globals.w * 0.15,
+            child: Container(
+                child: MouseRegion(
+                    onHover: (event) {
+                      appContainer.style.cursor = 'pointer';
+                    },
+                    onExit: (event) {
+                      appContainer.style.cursor = 'default';
+                    },
+                    child: FlatButton(
+                        color: playerColors[i],
+                        splashColor: colors['white'],
+                        onPressed: () => _buttonDisabled[i]
+                            ? null
+                            : setState(() {
+                                _nextPlayer(i);
+                              }),
+                        child: Container())))));
   }
 }
 
-class GameBoard extends CustomPainter {
-  Canvas bgCanvas;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    bgCanvas = canvas;
-    //initialize the drawing variables
-    if (globals.tiles == null) {
-      //draw background
-      var rect = Offset.zero & size;
-      canvas.drawRect(
-        rect,
-        Paint()..color = colors['water'],
-      );
-      //initialize the tiles
-      initTiles();
-      print('Initializing Tiles...');
-
-      drawTiles();
-      removeDuplicates();
-      if (globals.gametype == 'online') {
-        //pass to api
-        UpdateGame(repository: repository)
-            .update('tiles', globals.tiles.toString());
-      }
-      // drawVertices();
-      constructGraph();
-      // print(globals.coastVerts);
-      drawCoast();
-      vertexXs();
-    } else {
-      var rect = Offset.zero & size;
-      canvas.drawRect(
-        rect,
-        Paint()..color = colors['water'],
-      );
-      drawTiles();
-      drawCoast();
-    }
-  }
-
-  @override
-  bool shouldRepaint(GameBoard oldDelegate) => false;
-
-//sets a list of all vertex xs for use by gamepeice placement
-  void vertexXs() {
-    for (int i = 0; i < globals.vertices.length; i++) {
-      if (!globals.vertexXs.contains(globals.vertices[i][0].round()))
-        globals.vertexXs.add(globals.vertices[i][0].round());
-    }
-    globals.vertexXs.sort();
-    globals.vertexXd = globals.vertexXs[1] - globals.vertexXs[0];
-  }
-
+class InitLocalGame extends StatelessWidget {
   //initializes the tiles
   void initTiles() {
     globals.tiles = {};
@@ -616,23 +683,211 @@ class GameBoard extends CustomPainter {
     }
   }
 
-  //draws all of the game tiles in the standard 3-4-5-4-3 config with the resource color and number chips
-  void drawTiles() {
-    double xi = globals.w / 2 - globals.right * 4; // hexagon x
-    double yi = globals.h / 2 - globals.down * 2; // hexagon y
+  //initializes the coordinates of the vertices
+  void initVerts() {
+    var hexagon = [
+      0,
+      globals.r,
+      (sqrt(3) * globals.r) / 2,
+      globals.r / 2,
+      (sqrt(3) * globals.r) / 2,
+      -globals.r / 2,
+      0,
+      -globals.r,
+      -(sqrt(3) * globals.r) / 2,
+      -globals.r / 2,
+      -(sqrt(3) * globals.r) / 2,
+      globals.r / 2,
+    ];
+    double right = (sqrt(3) * globals.r) / 2;
+    double down = 1.5 * globals.r;
+    double xi = globals.w / 2 - right * 4; // hexagon x
+    double yi = globals.h / 2 - down * 2; // hexagon y
     double x = xi;
     double y = yi;
     for (int i = 0; i < globals.tiles.length; i++) {
       if (i == 3 || i == 7) {
-        xi -= globals.right;
+        xi -= right;
         x = xi;
-        y += globals.down;
+        y += down;
       } else if (i == 12 || i == 16) {
-        xi += globals.right;
+        xi += right;
         x = xi;
-        y += globals.down;
+        y += down;
       }
-      x += globals.right * 2;
+      x += right * 2;
+      for (int k = 0; k < 6; k++) {
+        globals.dist.add([]);
+        for (int j = 0; j < 12; j++)
+          globals.dist[globals.dist.length - 1].add([0, 0, 0, 0, 0]);
+
+        if (globals.tiles[i][0] != "r")
+          globals.dist[globals.dist.length - 1][globals.tiles[i][1] - 1]
+              [globals.resourceIndex[globals.tiles[i][0]]]++;
+      }
+      globals.vertices.add([hexagon[0] + x, hexagon[1] + y]);
+      for (int l = 2; l < hexagon.length - 1; l += 2) {
+        globals.vertices.add([hexagon[l] + x, hexagon[l + 1] + y]);
+      }
+    }
+  }
+
+  //removes overlapping globals.vertices
+  void removeDuplicates() {
+    for (int i = 0; i < globals.vertices.length; i++) {
+      int count = 0;
+      for (int j = i + 1; j < globals.vertices.length; j++) {
+        if ((globals.vertices[j][0]).round() ==
+                (globals.vertices[i][0]).round() &&
+            (globals.vertices[j][1]).round() ==
+                (globals.vertices[i][1]).round()) {
+          for (int k = 0; k < 12; k++) {
+            for (int l = 0; l < 5; l++) {
+              globals.dist[i][k][l] += globals.dist[j][k][l];
+            }
+          }
+
+          globals.dist.removeRange(j, j + 1);
+          globals.vertices.removeRange(j, j + 1);
+          count++;
+          j -= 1;
+        }
+      }
+      if (count < 2) globals.coastVerts.add(i);
+    }
+  }
+
+  //constructs an undirected graph of all globals.vertices and edges
+  void constructGraph() {
+    int numVerts = globals.vertices.length;
+    globals.vertGraph = new Graph(numVerts);
+    for (int i = 0; i < numVerts; i++) {
+      globals.vertGraph.addVertex(i);
+    }
+    for (int i = 0; i < numVerts; i++) {
+      List adj = getAdj(i);
+      for (int j = 0; j < adj.length; j++) {
+        if (adj[j] > i) {
+          globals.vertGraph.addEdge(i, adj[j]);
+        }
+      }
+    }
+    // globals.vertGraph.printGraph();
+  }
+
+  //checks the possible adjacent globals.vertices and returns their indeces
+  List getAdj(i) {
+    List adj = [];
+    double xi = globals.vertices[i][0];
+    double yi = globals.vertices[i][1];
+    double x = xi;
+    double y = yi - globals.r;
+    double up = -globals.r / 2;
+    double right = (sqrt(3) * globals.r) / 2;
+    for (int k = 0; k < 6; k++) {
+      if (k == 1) {
+        y = yi + globals.r;
+      } else if (k == 2) {
+        x = xi + right;
+        y = yi + up;
+      } else if (k == 3) {
+        y = yi - up;
+      } else if (k == 4) {
+        x = xi - right;
+      } else if (k == 5) {
+        y = yi + up;
+      }
+      for (int j = 0; j < globals.vertices.length; j++) {
+        if ((globals.vertices[j][0]).round() == (x).round() &&
+            (globals.vertices[j][1]).round() == (y).round()) {
+          adj.add(j);
+        }
+      }
+    }
+    return adj;
+  }
+
+  //sets a list of all vertex xs for use by gamepeice placement
+  void vertexXs() {
+    for (int i = 0; i < globals.vertices.length; i++) {
+      if (!globals.vertexXs.contains(globals.vertices[i][0].round()))
+        globals.vertexXs.add(globals.vertices[i][0].round());
+    }
+    globals.vertexXs.sort();
+    globals.vertexXd = globals.vertexXs[1] - globals.vertexXs[0];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print('Initializing Board...');
+    initTiles();
+    initVerts();
+    removeDuplicates();
+    constructGraph();
+    vertexXs();
+    return Scaffold(
+        body: Stack(
+      children: <Widget>[
+        CustomPaint(painter: GameBoard(), child: Container()),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              width: 7.0,
+              color: colors['brown'],
+            ),
+          ),
+        ),
+        PlaceGamePiece()
+      ],
+    ));
+  }
+}
+
+class GameBoard extends CustomPainter {
+  Canvas bgCanvas;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    bgCanvas = canvas;
+    //initialize the drawing variables
+    //draw background
+    var rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()..color = colors['water'],
+    );
+
+    drawTiles();
+    drawCoast();
+    if (globals.gametype == 'online') {
+      //pass to api
+      UpdateGame(repository: repository)
+          .update('tiles', globals.tiles.toString());
+    }
+  }
+
+  @override
+  bool shouldRepaint(GameBoard oldDelegate) => false;
+
+  //draws all of the game tiles in the standard 3-4-5-4-3 config with the resource color and number chips
+  void drawTiles() {
+    double right = (sqrt(3) * globals.r) / 2;
+    double down = 1.5 * globals.r;
+    double xi = globals.w / 2 - right * 4; // hexagon x
+    double yi = globals.h / 2 - down * 2; // hexagon y
+    double x = xi;
+    double y = yi;
+    for (int i = 0; i < globals.tiles.length; i++) {
+      if (i == 3 || i == 7) {
+        xi -= right;
+        x = xi;
+        y += down;
+      } else if (i == 12 || i == 16) {
+        xi += right;
+        x = xi;
+        y += down;
+      }
+      x += right * 2;
 
       drawHexagon(x, y, i);
       // tile_centers[i] = [x, y];
@@ -658,23 +913,26 @@ class GameBoard extends CustomPainter {
 
 // draws a hexagon at the given position with a given tile
   void drawHexagon(double x, double y, int tile) {
-    for (int i = 0; i < 6; i++) {
-      globals.dist.add([]);
-      for (int j = 0; j < 12; j++)
-        globals.dist[globals.dist.length - 1].add([0, 0, 0, 0, 0]);
+    var hexagon = [
+      0,
+      globals.r,
+      (sqrt(3) * globals.r) / 2,
+      globals.r / 2,
+      (sqrt(3) * globals.r) / 2,
+      -globals.r / 2,
+      0,
+      -globals.r,
+      -(sqrt(3) * globals.r) / 2,
+      -globals.r / 2,
+      -(sqrt(3) * globals.r) / 2,
+      globals.r / 2,
+    ];
 
-      if (globals.tiles[tile][0] != "r")
-        globals.dist[globals.dist.length - 1][globals.tiles[tile][1] - 1]
-            [globals.resourceIndex[globals.tiles[tile][0]]]++;
-    }
     var paint = Paint()..color = colors[globals.tiles[tile][0]];
     final hex = Path();
-    globals.vertices.add([globals.hexagon[0] + x, globals.hexagon[1] + y]);
-    hex.moveTo(globals.hexagon[0] + x, globals.hexagon[1] + y);
-    for (int i = 2; i < globals.hexagon.length - 1; i += 2) {
-      globals.vertices
-          .add([globals.hexagon[i] + x, globals.hexagon[i + 1] + y]);
-      hex.lineTo(globals.hexagon[i] + x, globals.hexagon[i + 1] + y);
+    hex.moveTo(hexagon[0] + x, hexagon[1] + y);
+    for (int i = 2; i < hexagon.length - 1; i += 2) {
+      hex.lineTo(hexagon[i] + x, hexagon[i + 1] + y);
     }
     bgCanvas.drawPath(hex, paint);
   }
@@ -987,107 +1245,32 @@ class GameBoard extends CustomPainter {
     }
   }
 
-  //removes overlapping globals.vertices
-  void removeDuplicates() {
-    for (int i = 0; i < globals.vertices.length; i++) {
-      int count = 0;
-      for (int j = i + 1; j < globals.vertices.length; j++) {
-        if ((globals.vertices[j][0]).round() ==
-                (globals.vertices[i][0]).round() &&
-            (globals.vertices[j][1]).round() ==
-                (globals.vertices[i][1]).round()) {
-          for (int k = 0; k < 12; k++) {
-            for (int l = 0; l < 5; l++) {
-              globals.dist[i][k][l] += globals.dist[j][k][l];
-            }
-          }
-
-          globals.dist.removeRange(j, j + 1);
-          globals.vertices.removeRange(j, j + 1);
-          count++;
-          j -= 1;
-        }
-      }
-      if (count < 2) globals.coastVerts.add(i);
-    }
-  }
-
-  //constructs an undirected graph of all globals.vertices and edges
-  void constructGraph() {
-    int numVerts = globals.vertices.length;
-    globals.vertGraph = new Graph(numVerts);
-    for (int i = 0; i < numVerts; i++) {
-      globals.vertGraph.addVertex(i);
-    }
-    for (int i = 0; i < numVerts; i++) {
-      List adj = getAdj(i);
-      for (int j = 0; j < adj.length; j++) {
-        if (adj[j] > i) {
-          globals.vertGraph.addEdge(i, adj[j]);
-        }
-      }
-    }
-    // globals.vertGraph.printGraph();
-  }
-
-//checks the possible adjacent globals.vertices and returns their indeces
-  List getAdj(i) {
-    List adj = [];
-    double xi = globals.vertices[i][0];
-    double yi = globals.vertices[i][1];
-    double x = xi;
-    double y = yi - globals.r;
-    double up = -globals.r / 2;
-    double right = (sqrt(3) * globals.r) / 2;
-    for (int k = 0; k < 6; k++) {
-      if (k == 1) {
-        y = yi + globals.r;
-      } else if (k == 2) {
-        x = xi + right;
-        y = yi + up;
-      } else if (k == 3) {
-        y = yi - up;
-      } else if (k == 4) {
-        x = xi - right;
-      } else if (k == 5) {
-        y = yi + up;
-      }
-      for (int j = 0; j < globals.vertices.length; j++) {
-        if ((globals.vertices[j][0]).round() == (x).round() &&
-            (globals.vertices[j][1]).round() == (y).round()) {
-          adj.add(j);
-        }
-      }
-    }
-    return adj;
-  }
-
 //draws circles at globals.vertices (used in debugging)
-  void drawVertices() {
-    for (int i = 0; i < globals.vertices.length; i++) {
-      Rect cirRect = Rect.fromCircle(
-          center: Offset(globals.vertices[i][0], globals.vertices[i][1]),
-          radius: globals.r * 0.3);
-      var paint = Paint()..color = Colors.black;
-      bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
-    }
-    int target = 10;
-    Rect cirRect = Rect.fromCircle(
-        center:
-            Offset(globals.vertices[target][0], globals.vertices[target][1]),
-        radius: globals.r * 0.3);
-    var paint = Paint()..color = Colors.red;
-    bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
-    List adj = getAdj(target);
-    for (int i = 0; i < adj.length; i++) {
-      Rect cirRect = Rect.fromCircle(
-          center:
-              Offset(globals.vertices[adj[i]][0], globals.vertices[adj[i]][1]),
-          radius: globals.r * 0.3);
-      var paint = Paint()..color = Colors.white;
-      bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
-    }
-  }
+  // void drawVertices() {
+  //   for (int i = 0; i < globals.vertices.length; i++) {
+  //     Rect cirRect = Rect.fromCircle(
+  //         center: Offset(globals.vertices[i][0], globals.vertices[i][1]),
+  //         radius: globals.r * 0.3);
+  //     var paint = Paint()..color = Colors.black;
+  //     bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+  //   }
+  //   int target = 10;
+  //   Rect cirRect = Rect.fromCircle(
+  //       center:
+  //           Offset(globals.vertices[target][0], globals.vertices[target][1]),
+  //       radius: globals.r * 0.3);
+  //   var paint = Paint()..color = Colors.red;
+  //   bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+  //   List adj = getAdj(target);
+  //   for (int i = 0; i < adj.length; i++) {
+  //     Rect cirRect = Rect.fromCircle(
+  //         center:
+  //             Offset(globals.vertices[adj[i]][0], globals.vertices[adj[i]][1]),
+  //         radius: globals.r * 0.3);
+  //     var paint = Paint()..color = Colors.white;
+  //     bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+  //   }
+  // }
 }
 
 class Graph {
@@ -1162,6 +1345,28 @@ class UIWidget extends StatefulWidget {
 }
 
 class _UIState extends State<UIWidget> {
+  void rollDice() {
+    if (!globals.rolled) {
+      setState(() {
+        globals.rolled = true;
+        var rand = Random();
+        globals.diceNum = (rand.nextDouble() * 6).floor() +
+            1 +
+            (rand.nextDouble() * 6).floor() +
+            1;
+      });
+      if (globals.diceNum != 7) {
+        //distribute_resources();
+      } else {
+        //move_robber();
+      }
+    }
+  }
+
+  void _getDevCard() {
+    print('dev carrrddd');
+  }
+
   @override
   Widget build(BuildContext context) {
     final double bcW = globals.refscale * 0.3;
@@ -1183,7 +1388,7 @@ class _UIState extends State<UIWidget> {
                   padding: EdgeInsets.all(0),
                   color: Colors.transparent,
                   splashColor: colors['white'],
-                  onPressed: () => print('Roll'),
+                  onPressed: () => rollDice(),
                   child: SizedBox(
                       width: globals.refscale * .2,
                       height: globals.refscale * .1333334,
@@ -1191,6 +1396,20 @@ class _UIState extends State<UIWidget> {
                         foregroundPainter: DicePainter(),
                         child: Container(),
                       ))))),
+      //dice roll prompt and rolled number
+      if (!globals.rolled)
+        Align(
+            alignment: Alignment(0, -0.9),
+            child: (Text('Roll',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 40.0, color: colors['white']))))
+      else
+        Positioned(
+            left: 20 + globals.refscale * .25,
+            top: 40 + globals.refscale * 0.1,
+            child: (Text(globals.diceNum.toString(),
+                textAlign: TextAlign.left,
+                style: TextStyle(fontSize: 40.0, color: colors['white'])))),
       //trade button
       uiButton(context, 'Trade', 20, 60 + (globals.refscale * 16) / 75),
       //end turn button
@@ -1206,7 +1425,8 @@ class _UIState extends State<UIWidget> {
                   decoration: BoxDecoration(
                       color: colors['beige'],
                       border: Border.all(
-                          color: Colors.orange,
+                          color: globals.players[
+                              globals.playerOrder[globals.currPlayer]]['color'],
                           width: globals.refscale * 0.01)),
                   child: Stack(
                     children: <Widget>[
@@ -1237,7 +1457,9 @@ class _UIState extends State<UIWidget> {
                                       padding: EdgeInsets.all(0),
                                       color: Colors.transparent,
                                       splashColor: colors['brown'],
-                                      onPressed: () => print('Road'),
+                                      onPressed: () => setState(() {
+                                            globals.placeP = 'r';
+                                          }),
                                       child: SizedBox(
                                           width: globals.refscale * .28,
                                           height: globals.refscale * .085,
@@ -1271,7 +1493,9 @@ class _UIState extends State<UIWidget> {
                                       padding: EdgeInsets.all(0),
                                       color: Colors.transparent,
                                       splashColor: colors['brown'],
-                                      onPressed: () => print('Settlement'),
+                                      onPressed: () => setState(() {
+                                            globals.placeP = 's';
+                                          }),
                                       child: SizedBox(
                                           width: globals.refscale * .28,
                                           height: globals.refscale * .085,
@@ -1305,7 +1529,9 @@ class _UIState extends State<UIWidget> {
                                       padding: EdgeInsets.all(0),
                                       color: Colors.transparent,
                                       splashColor: colors['brown'],
-                                      onPressed: () => print('City'),
+                                      onPressed: () => setState(() {
+                                            globals.placeP = 'c';
+                                          }),
                                       child: SizedBox(
                                           width: globals.refscale * .28,
                                           height: globals.refscale * .085,
@@ -1339,8 +1565,7 @@ class _UIState extends State<UIWidget> {
                                       padding: EdgeInsets.all(0),
                                       color: Colors.transparent,
                                       splashColor: colors['brown'],
-                                      onPressed: () =>
-                                          print('Development Card'),
+                                      onPressed: () => _getDevCard(),
                                       child: SizedBox(
                                           width: globals.refscale * .28,
                                           height: globals.refscale * .085,
@@ -1386,6 +1611,11 @@ class _UIState extends State<UIWidget> {
                         foregroundPainter: DCBackPainter(),
                         child: Container(),
                       ))))),
+      //player hand
+      CustomPaint(foregroundPainter: HandPainter(), child: Container()),
+      //gamepeice placement
+      if (globals.placeP != '')
+        PlaceGamePiece()
     ]);
   }
 
@@ -1416,9 +1646,46 @@ class _UIState extends State<UIWidget> {
   }
 }
 
+class HandPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    List res = ["s", "o", "b", "w", "f"];
+    double cardWidth = globals.refscale * 0.2;
+    double cardHeight = globals.refscale * 0.1;
+    double margin = globals.refscale * 0.01;
+    double x = globals.w / 2 - 2.5 * cardWidth - 2 * margin;
+    for (int i = 0; i < 5; i++) {
+      canvas.drawRect(
+          Rect.fromLTWH(x, globals.h - cardHeight, cardWidth, cardHeight),
+          Paint()..color = colors[res[i]]);
+      TextSpan span = new TextSpan(
+          style: new TextStyle(
+              color: colors['offwhite'], fontSize: globals.r * 0.5),
+          text: globals.players[globals.playerOrder[globals.currPlayer]]['hand']
+                  [i]
+              .toString());
+      TextPainter tp = new TextPainter(
+          text: span,
+          textScaleFactor: 1,
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.ltr);
+      tp.layout();
+      tp.paint(
+          canvas,
+          new Offset(x + cardWidth / 2 - (tp.width / 2),
+              globals.h - cardHeight / 2 - (tp.height / 2)));
+
+      x += cardWidth + margin;
+    }
+  }
+
+  bool shouldRepaint(HandPainter oldDelegate) => false;
+}
+
 class DicePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
+    //Dice
     canvas.drawRect(
         Rect.fromLTWH(0, 0, globals.refscale * 0.1, globals.refscale * 0.1),
         Paint()..color = colors['white']);
@@ -1460,6 +1727,21 @@ class DicePainter extends CustomPainter {
         2 * pi,
         true,
         Paint()..color = colors['black']);
+    //roll prompt
+    if (!globals.rolled) {
+      TextSpan span = new TextSpan(
+          style:
+              new TextStyle(color: colors['white'], fontSize: globals.r * 0.8),
+          text: 'Roll');
+      TextPainter tp = new TextPainter(
+          text: span,
+          textScaleFactor: 1,
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.ltr);
+      tp.layout();
+      tp.paint(
+          canvas, new Offset(globals.w / 2 - (tp.width / 2), globals.h * .05));
+    }
   }
 
   bool shouldRepaint(DicePainter oldDelegate) => false;
@@ -1643,21 +1925,38 @@ class _PlacePiece extends State<PlaceGamePiece> {
       x = details.position.dx;
       y = details.position.dy;
     });
-    // print(x);
   }
 
   @override
   Widget build(BuildContext context) {
-    print('yes');
-    return GestureDetector(
-        onTap: () {
-          setState(() {
-            globals.placeRoad = true;
-          });
-        },
-        child: CustomPaint(
-            painter: DrawGamePieces(x, y),
-            child: MouseRegion(onHover: _updateLocation)));
+    if (globals.placeP != '') {
+      return GestureDetector(
+          onTap: () {
+            setState(() {
+              globals.placeP += 'p';
+            });
+          },
+          child: CustomPaint(
+              painter: DrawGamePieces(x, y),
+              child: MouseRegion(
+                  onHover: _updateLocation,
+                  child: Stack(
+                    children: <Widget>[
+                      if (globals.start)
+                        Align(
+                            alignment: Alignment(0, -0.9),
+                            child: (Text('Place Beginning Settlements',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    fontSize: 40.0, color: colors['white'])))),
+                    ],
+                  ))));
+    }
+    if (globals.start) {
+      globals.start = false;
+      return CustomPaint(painter: DrawGamePieces(x, y), child: UIWidget());
+    }
+    return CustomPaint(painter: DrawGamePieces(x, y));
   }
 }
 
@@ -1666,7 +1965,7 @@ class DrawGamePieces extends CustomPainter {
   // int nearestVert;
   double x, y;
   DrawGamePieces(this.x, this.y);
-
+  @override
   void paint(Canvas canvas, Size size) {
     gpCanvas = canvas;
     var rect = Offset.zero & size;
@@ -1674,28 +1973,119 @@ class DrawGamePieces extends CustomPainter {
       rect,
       Paint()..color = Colors.transparent,
     );
-    if (globals.placeSet) {
-      globals.placeSet = false;
-      Paint paint = Paint()..color = colors['selection'];
-      Rect rect = Rect.fromLTWH(
-          globals.vertices[globals.nearestVert][0] - globals.sW / 2,
-          globals.vertices[globals.nearestVert][1] - globals.sH / 2,
-          globals.sW,
-          globals.sH);
+    if (globals.placeP == 'sp') {
+      placeSettlement();
+    } else if (globals.placeP == 'cp') {
+      placeCity();
+    } else if (globals.placeP == 'rp') {
+      placeRoad();
+    } else if (globals.placeP == 'r') {
+      roadVis();
+    } else if (globals.placeP == 's' || globals.placeP == 'c') {
+      settlementVis();
+    }
+    drawStored();
+  }
+
+  void drawStored() {
+    for (int i = 0; i < globals.storedSettlements.length; i++) {
+      Paint paint = Paint()..color = globals.storedSettlements[i][1];
+      int vert = globals.storedSettlements[i][0];
+      Rect rect = Rect.fromLTWH(globals.vertices[vert][0] - globals.sW / 2,
+          globals.vertices[vert][1] - globals.sH / 2, globals.sW, globals.sH);
       gpCanvas.drawRect(rect, paint);
-    } else if (globals.placeCit) {
-      globals.placeCit = false;
-      Paint paint = Paint()..color = colors['selection'];
-      Rect rect = Rect.fromLTWH(
-          globals.vertices[globals.nearestVert][0] - globals.sW / 2,
-          globals.vertices[globals.nearestVert][1],
-          globals.sH,
-          globals.sW);
-      gpCanvas.drawRect(rect, paint);
-    } else if (globals.placeRoad) {
-      globals.placeRoad = false;
+    }
+    for (int i = 0; i < globals.storedRoads.length; i++) {
       Paint paint = Paint()
-        ..color = colors['selection']
+        ..color = globals.storedRoads[i][2]
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = globals.refscale * .008;
+
+      int vert1 = globals.storedRoads[i][0];
+      int vert2 = globals.storedRoads[i][1];
+
+      gpCanvas.drawLine(
+          Offset(globals.vertices[vert1][0], globals.vertices[vert1][1]),
+          Offset(globals.vertices[vert2][0], globals.vertices[vert2][1]),
+          paint);
+    }
+  }
+
+  void placeSettlement() {
+    globals.placeP = '';
+    Paint paint = Paint()
+      ..color =
+          globals.players[globals.playerOrder[globals.currPlayer]]['color'];
+    Rect rect = Rect.fromLTWH(
+        globals.vertices[globals.nearestVert][0] - globals.sW / 2,
+        globals.vertices[globals.nearestVert][1] - globals.sH / 2,
+        globals.sW,
+        globals.sH);
+    gpCanvas.drawRect(rect, paint);
+
+    globals.settlements[globals.nearestVert] = 1;
+    globals.storedSettlements.add([
+      globals.nearestVert,
+      globals.players[globals.playerOrder[globals.currPlayer]]['color']
+    ]);
+    globals.players[globals.playerOrder[globals.currPlayer]]['points']++;
+    globals.players[globals.playerOrder[globals.currPlayer]]['settlements']
+        .add(globals.nearestVert);
+    if (globals.coastVerts.contains(globals.nearestVert))
+      globals.players[globals.playerOrder[globals.currPlayer]]['ports']
+          .add(globals.nearestVert);
+    if (globals.start) {
+      globals.placeP = 'r';
+    } else {
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][0]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][2]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][3]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][4]--;
+    }
+  }
+
+  void placeCity() {
+    globals.placeP = '';
+    Paint paint = Paint()
+      ..color =
+          globals.players[globals.playerOrder[globals.currPlayer]]['color'];
+    Rect rect = Rect.fromLTWH(
+        globals.vertices[globals.nearestVert][0] - globals.sW / 2,
+        globals.vertices[globals.nearestVert][1],
+        globals.sH,
+        globals.sW);
+    gpCanvas.drawRect(rect, paint);
+  }
+
+  void placeRoad() {
+    bool alreadyOwned = false;
+    for (List verts in globals.storedRoads) {
+      if (verts[0] == globals.nearestVert && verts[1] == globals.closest ||
+          verts[1] == globals.nearestVert && verts[0] == globals.closest) {
+        alreadyOwned = true;
+        globals.placeP = 'r';
+        break;
+      }
+    }
+
+    if (!alreadyOwned &&
+            globals.players[globals.playerOrder[globals.currPlayer]]
+                    ['road_verts']
+                .contains(globals.nearestVert) ||
+        globals.players[globals.playerOrder[globals.currPlayer]]['road_verts']
+            .contains(globals.closest) ||
+        globals.players[globals.playerOrder[globals.currPlayer]]['settlements']
+            .contains(globals.nearestVert)) {
+      if (!globals.start && !globals.roadCardBool) {
+        globals.players[globals.playerOrder[globals.currPlayer]]['hand'][2]--;
+        globals.players[globals.playerOrder[globals.currPlayer]]['hand'][4]--;
+      }
+
+      globals.placeP = '';
+      //draw road
+      Paint paint = Paint()
+        ..color =
+            globals.players[globals.playerOrder[globals.currPlayer]]['color']
         ..style = PaintingStyle.stroke
         ..strokeWidth = globals.refscale * .008;
       gpCanvas.drawLine(
@@ -1704,8 +2094,87 @@ class DrawGamePieces extends CustomPainter {
           Offset(globals.vertices[globals.closest][0],
               globals.vertices[globals.closest][1]),
           paint);
+      //store road in player roads, stored roads, and add to road graph
+      globals.storedRoads.add([
+        globals.nearestVert,
+        globals.closest,
+        globals.players[globals.playerOrder[globals.currPlayer]]['color']
+      ]);
+
+      if (!globals.players[globals.playerOrder[globals.currPlayer]]
+              ['road_verts']
+          .contains(globals.nearestVert)) {
+        globals.players[globals.playerOrder[globals.currPlayer]]['road_verts']
+            .add(globals.nearestVert);
+        globals.players[globals.playerOrder[globals.currPlayer]]['road_graph']
+            .addVertex(globals.nearestVert);
+      }
+
+      if (!globals.players[globals.playerOrder[globals.currPlayer]]
+              ['road_verts']
+          .contains(globals.closest)) {
+        globals.players[globals.playerOrder[globals.currPlayer]]['road_verts']
+            .add(globals.closest);
+        globals.players[globals.playerOrder[globals.currPlayer]]['road_graph']
+            .addVertex(globals.closest);
+      }
+
+      globals.players[globals.playerOrder[globals.currPlayer]]['road_graph']
+          .addEdge(globals.nearestVert, globals.closest);
+
+      //dfs for longest road
+      if (!globals.start) {
+        List l1 = globals.players[globals.playerOrder[globals.currPlayer]]
+                ['road_graph']
+            .dfs(globals.players[globals.playerOrder[globals.currPlayer]]
+                ['road_verts'][0]);
+        List l2 = globals.players[globals.playerOrder[globals.currPlayer]]
+                ['road_graph']
+            .dfs(globals.players[globals.playerOrder[globals.currPlayer]]
+                ['road_verts'][2]);
+        if (l1.length > 5 && l1.length > globals.longestRoad) {
+          if (globals.lrHolder != -1)
+            globals.players[globals.playerOrder[globals.lrHolder]]['points'] -=
+                2;
+          globals.lrHolder = globals.currPlayer;
+          globals.players[globals.playerOrder[globals.currPlayer]]['points'] +=
+              2;
+          globals.longestRoad = l1.length;
+        }
+        if (l2.length > 5 && l2.length > globals.longestRoad) {
+          if (globals.lrHolder != -1)
+            globals.players[globals.playerOrder[globals.lrHolder]]['points'] -=
+                2;
+          globals.lrHolder = globals.currPlayer;
+          globals.players[globals.playerOrder[globals.currPlayer]]['points'] +=
+              2;
+          globals.longestRoad = l2.length;
+        }
+
+        //road dev card
+        if (globals.roadCardBool) {
+          globals.players[globals.playerOrder[globals.currPlayer]]['hand'][2]++;
+          globals.players[globals.playerOrder[globals.currPlayer]]['hand'][4]++;
+          globals.roadCardBool = false;
+          globals.placeP = 'r';
+        }
+      }
+      //start sequence comparisons
+      if (globals.start &&
+          globals.players[globals.playerOrder[0]]['points'] != 2) {
+        globals.placeP = 's';
+        if (globals.players[globals.playerOrder[globals.playerOrder.length - 1]]
+                ['points'] ==
+            0) {
+          globals.currPlayer++;
+        } else if (globals.players[globals
+                .playerOrder[globals.playerOrder.length - 1]]['points'] ==
+            2) {
+          globals.currPlayer--;
+        }
+      }
     } else {
-      roadVis();
+      globals.placeP = 'r';
     }
   }
 
@@ -1757,32 +2226,31 @@ class DrawGamePieces extends CustomPainter {
       globals.nearestVert =
           globals.possVerts[globals.unsortedYs.indexOf(nearestY)];
       globals.storedNx = nearestX;
-
-      //find nearest adjacent
-      List adj = globals.vertGraph.getAdj(globals.nearestVert);
-      double dist = (x - globals.vertices[adj[0]][0]).abs() +
-          (y - globals.vertices[adj[0]][1]).abs();
-      globals.closest = adj[0];
-      for (int i = 1; i < adj.length; i++) {
-        if ((x - globals.vertices[adj[i]][0]).abs() +
-                (y - globals.vertices[adj[i]][1]).abs() <
-            dist) {
-          dist = (x - globals.vertices[adj[i]][0]).abs() +
-              (y - globals.vertices[adj[i]][1]).abs();
-          globals.closest = adj[i];
-        }
-      }
-      Paint paint = Paint()
-        ..color = colors['selection']
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = globals.refscale * .008;
-      gpCanvas.drawLine(
-          Offset(globals.vertices[globals.nearestVert][0],
-              globals.vertices[globals.nearestVert][1]),
-          Offset(globals.vertices[globals.closest][0],
-              globals.vertices[globals.closest][1]),
-          paint);
     }
+    //find nearest adjacent
+    List adj = globals.vertGraph.getAdj(globals.nearestVert);
+    double dist = (x - globals.vertices[adj[0]][0]).abs() +
+        (y - globals.vertices[adj[0]][1]).abs();
+    globals.closest = adj[0];
+    for (int i = 1; i < adj.length; i++) {
+      if ((x - globals.vertices[adj[i]][0]).abs() +
+              (y - globals.vertices[adj[i]][1]).abs() <
+          dist) {
+        dist = (x - globals.vertices[adj[i]][0]).abs() +
+            (y - globals.vertices[adj[i]][1]).abs();
+        globals.closest = adj[i];
+      }
+    }
+    Paint paint = Paint()
+      ..color = colors['selection']
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = globals.refscale * .008;
+    gpCanvas.drawLine(
+        Offset(globals.vertices[globals.nearestVert][0],
+            globals.vertices[globals.nearestVert][1]),
+        Offset(globals.vertices[globals.closest][0],
+            globals.vertices[globals.closest][1]),
+        paint);
   }
 
   void settlementVis() {
