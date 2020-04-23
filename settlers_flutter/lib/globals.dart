@@ -12,7 +12,9 @@ var players = {};
 
 //game board variables
 String gametype = 'local';
-var tiles; // hashmap of tiles with coordinate : [resource, dice num]
+var tiles;
+List tileCenters =
+    []; // hashmap of tiles with coordinate : [resource, dice num]
 List vertices = [];
 var vertGraph;
 List coastVerts = [];
@@ -30,18 +32,30 @@ List vertexXs = [],
     possVerts = [],
     unsortedYs = [],
     storedSettlements = [],
-    storedRoads = [];
+    storedRoads = [],
+    storedCities = [];
 double storedNx;
 double vertexXd;
 int nearestVert, closest;
 int robberLoc;
 int longestRoad = 0;
 int lrHolder = -1;
-Map settlements = {};
 
 //Development Card Variables
+bool dispDevCards = false;
 bool roadCardBool = false;
+bool yopBool = false;
+List dispText = [
+  'Knight Card',
+  'Road Building',
+  'Year of Plenty',
+  'Monopoly',
+  'Victory Point'
+];
 
 //gameplay variables
 bool rolled = false;
 int diceNum;
+
+//trade variables
+bool dispTrade = false;

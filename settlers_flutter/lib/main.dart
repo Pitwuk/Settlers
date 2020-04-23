@@ -28,7 +28,10 @@ const colors = {
   'selection': Color(0x9fcfcfcf),
   'boardwalk': Color(0xff5a4832),
   'white': Color(0xffe9e9e9),
-  'black': Color(0xff1d1d1d)
+  'black': Color(0xff1d1d1d),
+  'darkgrey': Color(0xff202020),
+  'screenBG': Color(0xe1242424),
+  'TB': Color(0xe1919191)
 };
 
 final GameRepository repository = GameRepository(
@@ -683,6 +686,30 @@ class InitLocalGame extends StatelessWidget {
     }
   }
 
+//stores the tile center coordinates
+  void findCenters() {
+    double right = (sqrt(3) * globals.r) / 2;
+    double down = 1.5 * globals.r;
+    double xi = globals.w / 2 - right * 4; // hexagon x
+    double yi = globals.h / 2 - down * 2; // hexagon y
+    double x = xi;
+    double y = yi;
+    for (int i = 0; i < globals.tiles.length; i++) {
+      if (i == 3 || i == 7) {
+        xi -= right;
+        x = xi;
+        y += down;
+      } else if (i == 12 || i == 16) {
+        xi += right;
+        x = xi;
+        y += down;
+      }
+      x += right * 2;
+
+      globals.tileCenters.add([x, y]);
+    }
+  }
+
   //initializes the coordinates of the vertices
   void initVerts() {
     var hexagon = [
@@ -821,6 +848,7 @@ class InitLocalGame extends StatelessWidget {
   Widget build(BuildContext context) {
     print('Initializing Board...');
     initTiles();
+    findCenters();
     initVerts();
     removeDuplicates();
     constructGraph();
@@ -856,8 +884,8 @@ class GameBoard extends CustomPainter {
       rect,
       Paint()..color = colors['water'],
     );
-
     drawTiles();
+    drawThief();
     drawCoast();
     if (globals.gametype == 'online') {
       //pass to api
@@ -890,7 +918,6 @@ class GameBoard extends CustomPainter {
       x += right * 2;
 
       drawHexagon(x, y, i);
-      // tile_centers[i] = [x, y];
       if (globals.tiles[i][0] != "r") {
         Rect cirRect =
             Rect.fromCircle(center: Offset(x, y), radius: globals.r * 0.3);
@@ -911,9 +938,19 @@ class GameBoard extends CustomPainter {
     }
   }
 
+  //draws the theif at game start
+  void drawThief() {
+    Rect cirRect = Rect.fromCircle(
+        center: Offset(globals.tileCenters[globals.robberLoc][0],
+            globals.tileCenters[globals.robberLoc][1]),
+        radius: globals.r * 0.3);
+    var paint = Paint()..color = colors['darkgrey'];
+    bgCanvas.drawArc(cirRect, 0, 2 * pi, true, paint);
+  }
+
 // draws a hexagon at the given position with a given tile
   void drawHexagon(double x, double y, int tile) {
-    var hexagon = [
+    List hexagon = [
       0,
       globals.r,
       (sqrt(3) * globals.r) / 2,
@@ -1356,9 +1393,74 @@ class _UIState extends State<UIWidget> {
             1;
       });
       if (globals.diceNum != 7) {
-        //distribute_resources();
+        distributeResources();
       } else {
-        //move_robber();
+        setState(() {
+          globals.placeP = 't';
+        });
+      }
+    }
+  }
+
+  void distributeResources() {
+    double x = globals.tileCenters[globals.robberLoc][0];
+    double y = globals.tileCenters[globals.robberLoc][1];
+    List robberCoords = [];
+    List robberVerts = [];
+    List hexagon = [
+      0,
+      globals.r,
+      (sqrt(3) * globals.r) / 2,
+      globals.r / 2,
+      (sqrt(3) * globals.r) / 2,
+      -globals.r / 2,
+      0,
+      -globals.r,
+      -(sqrt(3) * globals.r) / 2,
+      -globals.r / 2,
+      -(sqrt(3) * globals.r) / 2,
+      globals.r / 2,
+    ];
+
+    for (int i = 0; i < hexagon.length - 1; i += 2) {
+      robberCoords.add([
+        (hexagon[i] + x).round(),
+        (hexagon[i + 1] + y).round(),
+      ]);
+    }
+    for (int j = 0; j < 6; j++) {
+      for (int i = 0; i < globals.vertices.length; i++) {
+        if ((globals.vertices[i][0]).round() == robberCoords[j][0] &&
+            (globals.vertices[i][1]).round() == robberCoords[j][1]) {
+          robberVerts.add(i);
+        }
+      }
+    }
+
+    for (int i = 0; i < globals.storedSettlements.length; i++) {
+      for (int k = 0; k < 5; k++) {
+        if (robberVerts
+                .contains(globals.vertices[globals.storedSettlements[i][0]]) &&
+            globals.tiles[globals.robberLoc][1] == globals.diceNum &&
+            globals.resourceIndex[globals.tiles[globals.robberLoc][0]] == k) {
+          print("robbed");
+        } else {
+          globals.players[globals.storedSettlements[i][1]]['hand'][k] += globals
+              .dist[globals.storedSettlements[i][0]][globals.diceNum - 1][k];
+        }
+      }
+    }
+    for (int i = 0; i < globals.storedCities.length; i++) {
+      for (int k = 0; k < 5; k++) {
+        if (robberVerts
+                .contains(globals.vertices[globals.storedCities[i][0]]) &&
+            globals.tiles[globals.robberLoc][1] == globals.diceNum &&
+            globals.resourceIndex[globals.tiles[globals.robberLoc][0]] == k) {
+          print("robbed");
+        } else {
+          globals.players[globals.storedCities[i][1]]['hand'][k] +=
+              globals.dist[globals.storedCities[i][0]][globals.diceNum - 1][k];
+        }
       }
     }
   }
@@ -1387,12 +1489,20 @@ class _UIState extends State<UIWidget> {
         [card]++;
   }
 
+  void _handleButton(func) {
+    if (func == 'trade') {
+      setState(() {
+        globals.dispTrade = true;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final double bcW = globals.refscale * 0.3;
     return Stack(children: <Widget>[
       //name
-      uiButton(context, 'Name', 20, 20),
+      uiButton(context, 'Name', 20, 20, null),
       //dice roll and number rolled
       Positioned(
           left: 20,
@@ -1431,7 +1541,8 @@ class _UIState extends State<UIWidget> {
                 textAlign: TextAlign.left,
                 style: TextStyle(fontSize: 40.0, color: colors['white'])))),
       //trade button
-      uiButton(context, 'Trade', 20, 60 + (globals.refscale * 16) / 75),
+      uiButton(
+          context, 'Trade', 20, 60 + (globals.refscale * 16) / 75, 'trade'),
       //end turn button
       uiButton(context, 'End Turn', 20, 80 + (globals.refscale * 22) / 75),
       //building cost card
@@ -1623,7 +1734,11 @@ class _UIState extends State<UIWidget> {
                   padding: EdgeInsets.all(0),
                   color: colors['beige'],
                   splashColor: colors['brown'],
-                  onPressed: () => print('Dev Cards'),
+                  onPressed: () {
+                    setState(() {
+                      globals.dispDevCards = true;
+                    });
+                  },
                   child: SizedBox(
                       width: globals.refscale * 0.15,
                       height: globals.refscale * .21,
@@ -1635,11 +1750,17 @@ class _UIState extends State<UIWidget> {
       CustomPaint(foregroundPainter: HandPainter(), child: Container()),
       //gamepeice placement
       if (globals.placeP != '')
-        PlaceGamePiece()
+        PlaceGamePiece(),
+      //display dev cards
+      if (globals.dispDevCards)
+        DispDevCards(),
+      //disp trade screen
+      if (globals.dispTrade)
+        TradeScreen(),
     ]);
   }
 
-  Widget uiButton(BuildContext context, txt, x, y) {
+  Widget uiButton(BuildContext context, txt, x, y, [func]) {
     return Positioned(
         left: x,
         top: y,
@@ -1657,7 +1778,7 @@ class _UIState extends State<UIWidget> {
                     child: FlatButton(
                       color: colors['beige'],
                       splashColor: colors['brown'],
-                      onPressed: () => print(txt),
+                      onPressed: () => _handleButton(func),
                       child: AutoSizeText(txt,
                           style:
                               TextStyle(fontSize: 30.0, color: colors['brown']),
@@ -1929,6 +2050,696 @@ class DCBackPainter extends CustomPainter {
   bool shouldRepaint(DCBackPainter oldDelegate) => false;
 }
 
+class DispDevCards extends StatefulWidget {
+  @override
+  _DispDevCards createState() {
+    return _DispDevCards();
+  }
+}
+
+class _DispDevCards extends State<DispDevCards> {
+  List<Widget> devCards = [];
+  List<Widget> usedCards = [];
+  List<Widget> vpCards = [];
+  bool resSelect = false;
+
+  void addCard(card, x, y, cW, arr) {
+    arr.add(Positioned(
+        left: x,
+        top: y,
+        child: MouseRegion(
+            onHover: (event) {
+              appContainer.style.cursor = 'pointer';
+            },
+            onExit: (event) {
+              appContainer.style.cursor = 'default';
+            },
+            child: FlatButton(
+                padding: EdgeInsets.all(0),
+                color: colors['beige'],
+                splashColor: colors['brown'],
+                onPressed: () => _devFunction(card),
+                child: SizedBox(
+                    width: cW,
+                    height: 1.4 * cW,
+                    child: Align(
+                        alignment: Alignment(0, -0.7),
+                        child: (AutoSizeText(globals.dispText[card],
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: cW * .15,
+                                color: colors['brown'])))))))));
+  }
+
+  void _initCards() {
+    //dev cards
+    List<int> cardArr = globals.players[globals.playerOrder[globals.currPlayer]]
+            ['dev_cards']
+        .sublist(0, 4);
+    print(cardArr);
+    int numCards = cardArr.reduce((a, b) => a + b);
+    print(numCards);
+    double cW = globals.refscale * 0.2;
+    double x = globals.w / 2 - cW - 10;
+    double y = globals.h * 0.15;
+
+    x -= (numCards / 2) * (cW + 10);
+    for (int i = 0; i < cardArr.length; i++) {
+      for (int j = 0; j < cardArr[i]; j++) {
+        addCard(i, (x += cW + 10), y, cW, devCards);
+      }
+    }
+
+    //used cards
+    cardArr = globals.players[globals.playerOrder[globals.currPlayer]]
+        ['used_dev_cards'];
+    print(cardArr);
+    numCards = cardArr.reduce((a, b) => a + b);
+    print(numCards);
+    cW = globals.refscale * 0.1;
+    x = globals.w / 2 - cW - 10;
+    y = globals.h * 0.575;
+
+    x -= (numCards / 2) * (cW + 10);
+    for (int i = 0; i < cardArr.length; i++) {
+      for (int j = 0; j < cardArr[i]; j++) {
+        addCard(i, (x += cW + 10), y, cW, usedCards);
+      }
+    }
+
+    //vp cards
+    numCards = globals.players[globals.playerOrder[globals.currPlayer]]
+        ['dev_cards'][4];
+    print(numCards);
+    x = globals.w / 2 - cW - 10;
+    y = globals.h * 0.82;
+
+    x -= (numCards / 2) * (cW + 10);
+    for (int i = 0; i < numCards; i++) {
+      addCard(4, (x += cW + 10), y, cW, vpCards);
+    }
+  }
+
+  void _devFunction(card) {
+    if (card == 0)
+      knightCard();
+    else if (card == 1)
+      roadCard();
+    else if (card == 2)
+      yopCard();
+    else if (card == 3) monopolyCard();
+  }
+
+  void knightCard() {
+    setState(() {
+      globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
+          [0]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['used_dev_cards']
+          [0]++;
+      globals.placeP = 't';
+    });
+  }
+
+  void roadCard() {
+    setState(() {
+      globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
+          [1]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['used_dev_cards']
+          [1]++;
+      globals.roadCardBool = true;
+      globals.placeP = 'r';
+    });
+  }
+
+  void yopCard() {
+    setState(() {
+      globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
+          [2]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['used_dev_cards']
+          [2]++;
+      globals.yopBool = true;
+      resSelect = true;
+    });
+  }
+
+  void monopolyCard() {
+    setState(() {
+      globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
+          [0]--;
+      globals.players[globals.playerOrder[globals.currPlayer]]['used_dev_cards']
+          [0]++;
+      resSelect = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    globals.dispDevCards = false;
+    globals.players[globals.playerOrder[globals.currPlayer]]
+        ['dev_cards'] = [1, 1, 1, 1, 3];
+    globals.players[globals.playerOrder[globals.currPlayer]]
+        ['used_dev_cards'] = [1, 1, 1, 1];
+    _initCards();
+    if (globals.placeP != '') {
+      return PlaceGamePiece();
+    } else if (resSelect) {
+      resSelect = false;
+      return ResSelectionScreen();
+    }
+    return Scaffold(
+      //background
+      backgroundColor: colors['screenBG'],
+      body: Stack(
+        children: <Widget>[
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                width: 7.0,
+                color: colors['brown'],
+              ),
+            ),
+          ),
+          // Development Cards text
+          Align(
+              alignment: Alignment(0, -0.9),
+              child: (Text('Development Cards',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: globals.refscale * 0.05,
+                      color: colors['white'])))),
+
+          // unused cards
+          Stack(
+            children: devCards,
+          ),
+
+          // Used Cards text
+          Align(
+              alignment: Alignment(0, 0.1),
+              child: (Text('Used Cards',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: globals.refscale * 0.05,
+                      color: colors['white'])))),
+
+          //Used Cards
+          Stack(
+            children: usedCards,
+          ),
+
+          //Victory Points text
+          Align(
+              alignment: Alignment(0, 0.6),
+              child: (Text('Victory Point Cards',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: globals.refscale * 0.05,
+                      color: colors['white'])))),
+
+          //Victory Point Cards
+          Stack(
+            children: vpCards,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ResSelectionScreen extends StatefulWidget {
+  @override
+  _ResSelectionScreen createState() {
+    return _ResSelectionScreen();
+  }
+}
+
+class _ResSelectionScreen extends State<ResSelectionScreen> {
+  List res = ['s', 'o', 'b', 'w', 'f'];
+  List<Widget> resButtons = [];
+  bool done = false;
+  bool one = false;
+
+  void _cardFunc(res) {
+    if (globals.yopBool) {
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][res]++;
+      if (one) {
+        globals.yopBool = false;
+        setState(() {
+          done = true;
+        });
+      } else {
+        setState(() {
+          one = true;
+        });
+      }
+    } else {
+      int quantStolen = 0;
+      for (String i in globals.playerOrder) {
+        quantStolen += globals.players[i]['hand'][res];
+        globals.players[i]['hand'][res] = 0;
+      }
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][res] =
+          quantStolen;
+      setState(() {
+        done = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double x = globals.w / 2 -
+        (globals.w * 0.15 + globals.w * 0.01) * 2 -
+        globals.w * 0.15 / 2;
+    double y = globals.h / 2 - globals.w * 0.1;
+    for (int i = 0; i < 5; i++) {
+      resButtons.add(resButton(context, i, x, y));
+      x += globals.w * 0.15 + globals.refscale * 0.01;
+      if (i == 4) {
+        y = globals.h / 2 + globals.refscale * 0.11;
+        x = globals.w / 2 -
+            (globals.w * 0.15 + globals.w * 0.01) * 2 -
+            globals.w * 0.15 / 2;
+      }
+    }
+    if (done) {
+      return Container();
+    } else {
+      return Scaffold(
+        backgroundColor: colors['screenBG'],
+        body: Stack(
+          children: <Widget>[
+            Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    width: 7.0,
+                    color: colors['brown'],
+                  ),
+                ),
+                child: Align(
+                    alignment: Alignment(0, -0.7),
+                    child: (Text(
+                      'Select Resource',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 40.0, color: colors['white']),
+                    )))),
+            Stack(
+              children: resButtons,
+            )
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget resButton(BuildContext context, i, x, y) {
+    return Positioned(
+        left: x,
+        top: y,
+        child: SizedBox(
+            width: globals.w * 0.15,
+            height: globals.w * 0.15,
+            child: Container(
+                child: MouseRegion(
+                    onHover: (event) {
+                      appContainer.style.cursor = 'pointer';
+                    },
+                    onExit: (event) {
+                      appContainer.style.cursor = 'default';
+                    },
+                    child: FlatButton(
+                        color: colors[res[i]],
+                        splashColor: colors['white'],
+                        onPressed: () => _cardFunc(i),
+                        child: Container())))));
+  }
+}
+
+class TradeScreen extends StatefulWidget {
+  @override
+  _TradeScreen createState() {
+    return _TradeScreen();
+  }
+}
+
+class _TradeScreen extends State<TradeScreen> {
+  List res = ['s', 'o', 'b', 'w', 'f'];
+  List<Widget> expResButtons = [];
+  List<Widget> impResButtons = [];
+  List<Widget> expRes = [];
+  List<Widget> impRes = [];
+  List<int> expBox = [];
+  List<int> impBox = [];
+  bool noMoreOut = false;
+  bool noMoreIn = false;
+
+  void _removeRes(box, i) {
+    if (box == 'e') {
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand']
+          [expBox[i]]++;
+      expRes = [];
+      expBox.removeRange(i, 1);
+      for (int j = 0; j < expBox.length; j++) _addRes(box, expBox[j]);
+    } else {
+      impRes = [];
+      impBox.removeRange(i, 1);
+      for (int j = 0; j < impBox.length; j++) _addRes(box, impBox[j]);
+    }
+  }
+
+  void _addRes(box, i) {
+    if (box == 'e') {
+      int n = expRes.length;
+      setState(() {
+        expRes.add(Positioned(
+            left: (globals.w * 11) / 50 +
+                globals.h / 100 +
+                (globals.w / 27) * (n),
+            top: (globals.h * 23) / 100,
+            child: SizedBox(
+                width: globals.w / 30,
+                height: globals.h * 23 / 100,
+                child: Container(
+                    child: MouseRegion(
+                        onHover: (event) {
+                          appContainer.style.cursor = 'pointer';
+                        },
+                        onExit: (event) {
+                          appContainer.style.cursor = 'default';
+                        },
+                        child: FlatButton(
+                            color: colors[res[i]],
+                            splashColor: colors['white'],
+                            onPressed: () => _removeRes(box, n),
+                            child: Container()))))));
+
+        globals.players[globals.playerOrder[globals.currPlayer]]['hand'][i]--;
+        expBox.add(i);
+      });
+    } else {
+      int n = impRes.length;
+      setState(() {
+        impRes.add(Positioned(
+            left: (globals.w * 11) / 50 +
+                globals.h / 100 +
+                (globals.w / 27) * (n),
+            top: (globals.h * 3) / 5,
+            child: SizedBox(
+                width: globals.w / 30,
+                height: globals.h * 23 / 100,
+                child: Container(
+                    child: MouseRegion(
+                        onHover: (event) {
+                          appContainer.style.cursor = 'pointer';
+                        },
+                        onExit: (event) {
+                          appContainer.style.cursor = 'default';
+                        },
+                        child: FlatButton(
+                            color: colors[res[i]],
+                            splashColor: colors['white'],
+                            onPressed: () => _removeRes(box, n),
+                            child: Container()))))));
+
+        impBox.add(i);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    //set export selection buttons
+    for (int i = 0; i < 5; i++) {
+      expResButtons.add(Positioned(
+          left: (globals.w * 13) / 25,
+          top: (globals.h * 11) / 50 + (globals.h / 20) * i,
+          child: SizedBox(
+              width: globals.h / 20,
+              height: globals.h / 20,
+              child: Container(
+                  child: MouseRegion(
+                      onHover: (event) {
+                        appContainer.style.cursor = 'pointer';
+                      },
+                      onExit: (event) {
+                        appContainer.style.cursor = 'default';
+                      },
+                      child: FlatButton(
+                          color: colors[res[i]],
+                          splashColor: colors['white'],
+                          onPressed: () => _addRes('e', i),
+                          child: Text(
+                              globals.players[
+                                      globals.playerOrder[globals.currPlayer]]
+                                      ['hand'][i]
+                                  .toString(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontSize: globals.h * 0.3,
+                                  color: colors['white']))))))));
+    }
+
+    //set import selection buttons
+    for (int i = 0; i < 5; i++) {
+      impResButtons.add(Positioned(
+          left: (globals.w * 13) / 25,
+          top: (globals.h * 59) / 100 + (globals.h / 20) * i,
+          child: SizedBox(
+              width: globals.h / 20,
+              height: globals.h / 20,
+              child: Container(
+                  child: MouseRegion(
+                      onHover: (event) {
+                        appContainer.style.cursor = 'pointer';
+                      },
+                      onExit: (event) {
+                        appContainer.style.cursor = 'default';
+                      },
+                      child: FlatButton(
+                          color: colors[res[i]],
+                          splashColor: colors['white'],
+                          onPressed: () => _addRes('i', i),
+                          child: Container()))))));
+    }
+
+    //draw
+    return Scaffold(
+      backgroundColor: colors['screenBG'],
+      body: Stack(
+        children: <Widget>[
+          //background
+          Positioned(
+              left: 0,
+              top: 0,
+              child: SizedBox(
+                width: globals.w * 1 / 5,
+                height: globals.h,
+                child: Container(
+                    child: MouseRegion(onHover: (event) {
+                  appContainer.style.cursor = 'pointer';
+                }, onExit: (event) {
+                  appContainer.style.cursor = 'default';
+                })),
+              )),
+          Positioned(
+              left: 0,
+              top: 0,
+              child: SizedBox(
+                width: globals.w,
+                height: globals.h / 10,
+                child: Container(
+                    child: MouseRegion(onHover: (event) {
+                  appContainer.style.cursor = 'pointer';
+                }, onExit: (event) {
+                  appContainer.style.cursor = 'default';
+                })),
+              )),
+          Positioned(
+              left: globals.w * 4 / 5,
+              top: 0,
+              child: SizedBox(
+                width: globals.w * 1 / 5,
+                height: globals.h,
+                child: Container(
+                    child: MouseRegion(onHover: (event) {
+                  appContainer.style.cursor = 'pointer';
+                }, onExit: (event) {
+                  appContainer.style.cursor = 'default';
+                })),
+              )),
+          Positioned(
+              left: 0,
+              top: globals.h * 9 / 10,
+              child: SizedBox(
+                width: globals.w,
+                height: globals.h / 10,
+                child: Container(
+                    child: MouseRegion(onHover: (event) {
+                  appContainer.style.cursor = 'pointer';
+                }, onExit: (event) {
+                  appContainer.style.cursor = 'default';
+                })),
+              )),
+          //border
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                width: 7.0,
+                color: colors['brown'],
+              ),
+            ),
+          ),
+          //main box
+          Positioned(
+              left: globals.w / 5,
+              top: globals.h / 10,
+              child: SizedBox(
+                width: globals.w * 3 / 5,
+                height: globals.h * 4 / 5,
+                child: Container(color: colors['beige']),
+              )),
+          //trade label
+          Positioned(
+              left: (globals.w * 11) / 50,
+              top: (globals.h * 7) / 50,
+              child: (Text('Trade',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: globals.refscale * 0.06,
+                      color: colors['brown'])))),
+          //export box
+          Positioned(
+              left: (globals.w * 11) / 50,
+              top: (globals.h * 11) / 50,
+              child: SizedBox(
+                width: globals.w * 0.3,
+                height: globals.h * 0.25,
+                child: Container(color: colors['TB']),
+              )),
+          //export box resorces
+          Stack(
+            children: expRes,
+          ),
+          //export box resource selection
+          Stack(
+            children: expResButtons,
+          ),
+          //says no more than 8 resources at a time
+          if (noMoreOut)
+            Positioned(
+                left: (globals.w * 13) / 25,
+                top: (globals.h * 11) / 50,
+                child: (Text('No more than 8 at a time',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        fontSize: globals.refscale * 0.03,
+                        color: Color(0xff7c1e1e))))),
+          // for label
+          Positioned(
+              left: (globals.w * 11) / 50,
+              top: (globals.h * 51) / 100,
+              child: (Text('For',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: globals.refscale * 0.06,
+                      color: colors['brown'])))),
+          //import box
+          Positioned(
+              left: (globals.w * 11) / 50,
+              top: (globals.h * 59) / 100,
+              child: SizedBox(
+                width: globals.w * 0.3,
+                height: globals.h * 0.25,
+                child: Container(color: colors['TB']),
+              )),
+          //import resources
+          Stack(
+            children: impRes,
+          ),
+          //import resource selection
+          Stack(
+            children: impResButtons,
+          ),
+          //says no more than 5 resources at a time
+          if (noMoreIn)
+            Positioned(
+                left: (globals.w * 13) / 25,
+                top: (globals.h * 59) / 100,
+                child: (Text('No more than 5 at a time',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        fontSize: globals.refscale * 0.03,
+                        color: Color(0xff7c1e1e))))),
+          // Ports label
+          Positioned(
+              left: (globals.w * 31) / 50,
+              top: (globals.h * 7) / 50,
+              child: (Text('Ports',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                      fontSize: globals.refscale * 0.06,
+                      color: colors['brown'])))),
+          //ports box
+          Positioned(
+              left: (globals.w * 31) / 50,
+              top: (globals.h * 11) / 50,
+              child: SizedBox(
+                width: globals.w * 4 / 25,
+                height: globals.h / 10,
+                child: Container(color: colors['TB']),
+              )),
+          //port box ports
+          // trade price
+          Positioned(
+              left: (globals.w * 31) / 50,
+              top: (globals.h * 9) / 25,
+              child: (Text('Trade Price',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                      fontSize: globals.refscale * 0.06,
+                      color: colors['brown'])))),
+          // trade price box
+          Positioned(
+              left: (globals.w * 31) / 50,
+              top: (globals.h * 11) / 25,
+              child: SizedBox(
+                width: globals.w * 4 / 25,
+                height: globals.h / 10,
+                child: Container(color: colors['TB']),
+              )),
+          //trade price text
+          //says trade not equal if it aint
+          //Trade Button
+          Positioned(
+              left: (globals.w * 31) / 50,
+              top: (globals.h * 77) / 100,
+              child: SizedBox(
+                  width: (globals.w * 4) / 25,
+                  height: (globals.h * 7) / 100,
+                  child: Container(
+                      child: MouseRegion(
+                          onHover: (event) {
+                            appContainer.style.cursor = 'pointer';
+                          },
+                          onExit: (event) {
+                            appContainer.style.cursor = 'default';
+                          },
+                          child: FlatButton(
+                            color: colors['brown'],
+                            splashColor: colors['beige'],
+                            onPressed: () => null,
+                            child: Text('Trade',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    fontSize: globals.refscale * 0.06,
+                                    color: colors['white'])),
+                          ))))),
+        ],
+      ),
+    );
+  }
+}
+
 class PlaceGamePiece extends StatefulWidget {
   @override
   _PlacePiece createState() {
@@ -2003,18 +2814,25 @@ class DrawGamePieces extends CustomPainter {
       roadVis();
     } else if (globals.placeP == 's' || globals.placeP == 'c') {
       settlementVis();
+    } else if (globals.placeP == 't') {
+      robberVis();
+    } else if (globals.placeP == 'tp') {
+      globals.placeP = '';
     }
     drawStored();
   }
 
   void drawStored() {
+    //draw settlements
     for (int i = 0; i < globals.storedSettlements.length; i++) {
-      Paint paint = Paint()..color = globals.storedSettlements[i][1];
+      Paint paint = Paint()
+        ..color = globals.players[globals.storedSettlements[i][1]]['color'];
       int vert = globals.storedSettlements[i][0];
       Rect rect = Rect.fromLTWH(globals.vertices[vert][0] - globals.sW / 2,
           globals.vertices[vert][1] - globals.sH / 2, globals.sW, globals.sH);
       gpCanvas.drawRect(rect, paint);
     }
+    //draw roads
     for (int i = 0; i < globals.storedRoads.length; i++) {
       Paint paint = Paint()
         ..color = globals.storedRoads[i][2]
@@ -2029,52 +2847,101 @@ class DrawGamePieces extends CustomPainter {
           Offset(globals.vertices[vert2][0], globals.vertices[vert2][1]),
           paint);
     }
-  }
-
-  void placeSettlement() {
-    globals.placeP = '';
-    Paint paint = Paint()
-      ..color =
-          globals.players[globals.playerOrder[globals.currPlayer]]['color'];
-    Rect rect = Rect.fromLTWH(
-        globals.vertices[globals.nearestVert][0] - globals.sW / 2,
-        globals.vertices[globals.nearestVert][1] - globals.sH / 2,
-        globals.sW,
-        globals.sH);
-    gpCanvas.drawRect(rect, paint);
-
-    globals.settlements[globals.nearestVert] = 1;
-    globals.storedSettlements.add([
-      globals.nearestVert,
-      globals.players[globals.playerOrder[globals.currPlayer]]['color']
-    ]);
-    globals.players[globals.playerOrder[globals.currPlayer]]['points']++;
-    globals.players[globals.playerOrder[globals.currPlayer]]['settlements']
-        .add(globals.nearestVert);
-    if (globals.coastVerts.contains(globals.nearestVert))
-      globals.players[globals.playerOrder[globals.currPlayer]]['ports']
-          .add(globals.nearestVert);
-    if (globals.start) {
-      globals.placeP = 'r';
-    } else {
-      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][0]--;
-      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][2]--;
-      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][3]--;
-      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][4]--;
+    //draw cities
+    for (int i = 0; i < globals.storedCities.length; i++) {
+      Paint paint = Paint()
+        ..color = globals.players[globals.storedCities[i][1]]['color'];
+      int vert = globals.storedCities[i][0];
+      Rect rect = Rect.fromLTWH(globals.vertices[vert][0] - globals.sW / 2,
+          globals.vertices[vert][1], globals.sH, globals.sW);
+      gpCanvas.drawRect(rect, paint);
     }
   }
 
+  void placeSettlement() {
+    //check if the space is open
+    bool isEmpty = true;
+    List adj = globals.vertGraph.getAdj(globals.nearestVert);
+    for (int n = 0; n < globals.storedSettlements.length; n++) {
+      List vert = globals.vertices[globals.storedSettlements[n][0]];
+      if (globals.vertices[globals.nearestVert][0] == vert[0] &&
+          globals.vertices[globals.nearestVert][1] == vert[1]) {
+        isEmpty = false;
+        break;
+      }
+      for (int i = 0; i < adj.length; i++) {
+        if (globals.vertices[adj[i]][0] == vert[0] &&
+            globals.vertices[adj[i]][1] == vert[1]) {
+          isEmpty = false;
+          break;
+        }
+      }
+    }
+    if (isEmpty) {
+      //draw settlement
+      globals.placeP = '';
+      Paint paint = Paint()
+        ..color =
+            globals.players[globals.playerOrder[globals.currPlayer]]['color'];
+      Rect rect = Rect.fromLTWH(
+          globals.vertices[globals.nearestVert][0] - globals.sW / 2,
+          globals.vertices[globals.nearestVert][1] - globals.sH / 2,
+          globals.sW,
+          globals.sH);
+      gpCanvas.drawRect(rect, paint);
+      //store the settlement
+      globals.storedSettlements
+          .add([globals.nearestVert, globals.playerOrder[globals.currPlayer]]);
+      globals.players[globals.playerOrder[globals.currPlayer]]['points']++;
+      globals.players[globals.playerOrder[globals.currPlayer]]['settlements']
+          .add(globals.nearestVert);
+      //add to ports if on a harbor
+      if (globals.portMap.containsKey(globals.nearestVert)) {
+        if (!globals.players[globals.playerOrder[globals.currPlayer]]['ports']
+            .contains(globals.portMap[globals.nearestVert])) {
+          globals.players[globals.playerOrder[globals.currPlayer]]['ports']
+              .add(globals.portMap[globals.nearestVert]);
+        }
+      }
+
+      if (globals.start) {
+        globals.placeP = 'r';
+      } else {
+        //take the resources
+        globals.players[globals.playerOrder[globals.currPlayer]]['hand'][0]--;
+        globals.players[globals.playerOrder[globals.currPlayer]]['hand'][2]--;
+        globals.players[globals.playerOrder[globals.currPlayer]]['hand'][3]--;
+        globals.players[globals.playerOrder[globals.currPlayer]]['hand'][4]--;
+      }
+    } else
+      globals.placeP = 's';
+  }
+
   void placeCity() {
-    globals.placeP = '';
-    Paint paint = Paint()
-      ..color =
-          globals.players[globals.playerOrder[globals.currPlayer]]['color'];
-    Rect rect = Rect.fromLTWH(
-        globals.vertices[globals.nearestVert][0] - globals.sW / 2,
-        globals.vertices[globals.nearestVert][1],
-        globals.sH,
-        globals.sW);
-    gpCanvas.drawRect(rect, paint);
+    if (globals.players[globals.playerOrder[globals.currPlayer]]['settlements']
+        .contains(globals.nearestVert)) {
+      //store city
+      globals.storedCities
+          .add([globals.nearestVert, globals.playerOrder[globals.currPlayer]]);
+      globals.players[globals.playerOrder[globals.currPlayer]]['points']++;
+      globals.players[globals.playerOrder[globals.currPlayer]]['settlements']
+          .add(globals.nearestVert);
+      //take resources
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][3] -= 2;
+      globals.players[globals.playerOrder[globals.currPlayer]]['hand'][1] -= 3;
+      //draw city
+      globals.placeP = '';
+      Paint paint = Paint()
+        ..color =
+            globals.players[globals.playerOrder[globals.currPlayer]]['color'];
+      Rect rect = Rect.fromLTWH(
+          globals.vertices[globals.nearestVert][0] - globals.sW / 2,
+          globals.vertices[globals.nearestVert][1],
+          globals.sH,
+          globals.sW);
+      gpCanvas.drawRect(rect, paint);
+    } else
+      globals.placeP = 'c';
   }
 
   void placeRoad() {
@@ -2083,7 +2950,6 @@ class DrawGamePieces extends CustomPainter {
       if (verts[0] == globals.nearestVert && verts[1] == globals.closest ||
           verts[1] == globals.nearestVert && verts[0] == globals.closest) {
         alreadyOwned = true;
-        globals.placeP = 'r';
         break;
       }
     }
@@ -2331,6 +3197,18 @@ class DrawGamePieces extends CustomPainter {
     Rect rect = Rect.fromLTWH(nearestX - globals.sW / 2,
         nearestY - globals.sH / 2, globals.sW, globals.sH);
     gpCanvas.drawRect(rect, paint);
+  }
+
+  void robberVis() {
+    for (int i = 0; i < globals.tileCenters.length; i++) {
+      if (x < globals.tileCenters[i][0] + globals.r &&
+          x > globals.tileCenters[i][0] - globals.r &&
+          y < globals.tileCenters[i][1] + globals.r &&
+          y > globals.tileCenters[i][1] - globals.r) {
+        globals.robberLoc = i;
+        break;
+      }
+    }
   }
 
   bool shouldRepaint(DrawGamePieces oldDelegate) => true;
