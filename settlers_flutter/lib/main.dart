@@ -48,7 +48,6 @@ class SimpleBlocDelegate extends BlocDelegate {
   @override
   void onTransition(Bloc bloc, Transition transition) {
     super.onTransition(bloc, transition);
-    print(transition);
   }
 }
 
@@ -301,8 +300,6 @@ class _MenuState extends State<MenuButtons> {
   Widget build(BuildContext context) {
     List<Widget> buttonWidgets = new List(buttons.length / 2);
     for (int i = 0; i < buttons.length - 1; i += 2) {
-      // print(i);
-      // print((i / 2).round());
       buttonWidgets[(i / 2).round()] =
           menuButton(context, buttons[i], 200, 100, buttons[i + 1]);
     }
@@ -563,7 +560,6 @@ class _ColorChoice extends State<ColorChoice> {
   }
 
   void _nextPlayer(i) {
-    print(i);
     globals.players[globals.playerOrder[count]]['color'] = playerColors[i];
     playerColors[i] = colors['beige'];
     _buttonDisabled[i] = true;
@@ -1443,7 +1439,6 @@ class _UIState extends State<UIWidget> {
                 .contains(globals.vertices[globals.storedSettlements[i][0]]) &&
             globals.tiles[globals.robberLoc][1] == globals.diceNum &&
             globals.resourceIndex[globals.tiles[globals.robberLoc][0]] == k) {
-          print("robbed");
         } else {
           globals.players[globals.storedSettlements[i][1]]['hand'][k] += globals
               .dist[globals.storedSettlements[i][0]][globals.diceNum - 1][k];
@@ -1456,7 +1451,6 @@ class _UIState extends State<UIWidget> {
                 .contains(globals.vertices[globals.storedCities[i][0]]) &&
             globals.tiles[globals.robberLoc][1] == globals.diceNum &&
             globals.resourceIndex[globals.tiles[globals.robberLoc][0]] == k) {
-          print("robbed");
         } else {
           globals.players[globals.storedCities[i][1]]['hand'][k] +=
               globals.dist[globals.storedCities[i][0]][globals.diceNum - 1][k];
@@ -1495,14 +1489,43 @@ class _UIState extends State<UIWidget> {
         globals.dispTrade = true;
       });
     }
+    if (func == 'end') {
+      if (globals.rolled) {
+        globals.rolled = false;
+        setState(() {
+          if (globals.currPlayer == globals.numPlayers - 1)
+            globals.currPlayer = 0;
+          else
+            globals.currPlayer++;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final double bcW = globals.refscale * 0.3;
+    bool lrBool = false;
+    bool laBool = false;
+    if (globals.lrHolder == globals.currPlayer) lrBool = true;
+    if (globals.laHolder == globals.currPlayer) laBool = true;
+
     return Stack(children: <Widget>[
       //name
-      uiButton(context, 'Name', 20, 20, null),
+      Positioned(
+        left: 20 - 3.5,
+        top: 20 - 3.5,
+        child: Container(
+          child: uiButton(
+              context, globals.playerOrder[globals.currPlayer], 20, 20, null),
+          decoration: BoxDecoration(
+            border: Border.all(
+              width: 7.0,
+              color: colors['brown'],
+            ),
+          ),
+        ),
+      ),
       //dice roll and number rolled
       Positioned(
           left: 20,
@@ -1544,7 +1567,8 @@ class _UIState extends State<UIWidget> {
       uiButton(
           context, 'Trade', 20, 60 + (globals.refscale * 16) / 75, 'trade'),
       //end turn button
-      uiButton(context, 'End Turn', 20, 80 + (globals.refscale * 22) / 75),
+      uiButton(
+          context, 'End Turn', 20, 80 + (globals.refscale * 22) / 75, 'end'),
       //building cost card
       Positioned(
           left: globals.w - bcW - 20,
@@ -1748,6 +1772,47 @@ class _UIState extends State<UIWidget> {
                       ))))),
       //player hand
       CustomPaint(foregroundPainter: HandPainter(), child: Container()),
+      //longest road card
+      if (lrBool)
+        Positioned(
+          left: globals.w - globals.refscale * 0.3 - 20,
+          top: globals.h - globals.refscale * 0.06,
+          child: SizedBox(
+              width: globals.refscale * 0.3,
+              height: globals.refscale * 0.06,
+              child: Container(
+                  color: colors['brown'],
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Text('Longest Road',
+                            style: TextStyle(
+                                fontSize: globals.refscale * 0.03,
+                                color: colors['beige']),
+                            textAlign: TextAlign.center)
+                      ]))),
+        ),
+      //largest army card
+      if (laBool)
+        Positioned(
+          left: globals.w - globals.refscale * 0.3 - 20,
+          top: globals.h - globals.refscale * 0.12,
+          child: SizedBox(
+              width: globals.refscale * 0.3,
+              height: globals.refscale * 0.06,
+              child: Container(
+                  color: colors['brown'],
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Text('Largest Army',
+                            style: TextStyle(
+                                fontSize: globals.refscale * 0.03,
+                                color: colors['beige']),
+                            textAlign: TextAlign.center)
+                      ]))),
+        ),
+
       //gamepeice placement
       if (globals.placeP != '')
         PlaceGamePiece(),
@@ -2062,6 +2127,7 @@ class _DispDevCards extends State<DispDevCards> {
   List<Widget> usedCards = [];
   List<Widget> vpCards = [];
   bool resSelect = false;
+  bool exit = false;
 
   void addCard(card, x, y, cW, arr) {
     arr.add(Positioned(
@@ -2096,9 +2162,7 @@ class _DispDevCards extends State<DispDevCards> {
     List<int> cardArr = globals.players[globals.playerOrder[globals.currPlayer]]
             ['dev_cards']
         .sublist(0, 4);
-    print(cardArr);
     int numCards = cardArr.reduce((a, b) => a + b);
-    print(numCards);
     double cW = globals.refscale * 0.2;
     double x = globals.w / 2 - cW - 10;
     double y = globals.h * 0.15;
@@ -2113,9 +2177,7 @@ class _DispDevCards extends State<DispDevCards> {
     //used cards
     cardArr = globals.players[globals.playerOrder[globals.currPlayer]]
         ['used_dev_cards'];
-    print(cardArr);
     numCards = cardArr.reduce((a, b) => a + b);
-    print(numCards);
     cW = globals.refscale * 0.1;
     x = globals.w / 2 - cW - 10;
     y = globals.h * 0.575;
@@ -2130,7 +2192,6 @@ class _DispDevCards extends State<DispDevCards> {
     //vp cards
     numCards = globals.players[globals.playerOrder[globals.currPlayer]]
         ['dev_cards'][4];
-    print(numCards);
     x = globals.w / 2 - cW - 10;
     y = globals.h * 0.82;
 
@@ -2151,6 +2212,7 @@ class _DispDevCards extends State<DispDevCards> {
   }
 
   void knightCard() {
+    //move the robber
     setState(() {
       globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
           [0]--;
@@ -2158,6 +2220,14 @@ class _DispDevCards extends State<DispDevCards> {
           [0]++;
       globals.placeP = 't';
     });
+    //check for longest army
+    if (globals.players[globals.playerOrder[globals.currPlayer]]
+                ['used_dev_cards'][0] >
+            2 &&
+        globals.players[globals.playerOrder[globals.currPlayer]]
+                ['used_dev_cards'][0] >
+            globals.players[globals.playerOrder[globals.laHolder]]
+                ['used_dev_cards'][0]) globals.laHolder = globals.currPlayer;
   }
 
   void roadCard() {
@@ -2194,28 +2264,34 @@ class _DispDevCards extends State<DispDevCards> {
 
   @override
   Widget build(BuildContext context) {
-    globals.dispDevCards = false;
-    globals.players[globals.playerOrder[globals.currPlayer]]
-        ['dev_cards'] = [1, 1, 1, 1, 3];
-    globals.players[globals.playerOrder[globals.currPlayer]]
-        ['used_dev_cards'] = [1, 1, 1, 1];
     _initCards();
     if (globals.placeP != '') {
       return PlaceGamePiece();
     } else if (resSelect) {
       resSelect = false;
       return ResSelectionScreen();
+    } else if (exit) {
+      exit = false;
+      return Container();
     }
     return Scaffold(
       //background
       backgroundColor: colors['screenBG'],
       body: Stack(
         children: <Widget>[
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(
-                width: 7.0,
-                color: colors['brown'],
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                exit = true;
+                globals.dispDevCards = false;
+              });
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  width: 7.0,
+                  color: colors['brown'],
+                ),
               ),
             ),
           ),
@@ -2390,77 +2466,109 @@ class _TradeScreen extends State<TradeScreen> {
   List<Widget> impRes = [];
   List<int> expBox = [];
   List<int> impBox = [];
+  List ports = [];
+  List<Widget> portWidgets = [];
   bool noMoreOut = false;
   bool noMoreIn = false;
+  bool done = false;
+  bool equal = true;
+  int price = 4;
+
+  _completeTrade() {
+    if (expBox.length == impBox.length * price) {
+      for (int i in impBox) {
+        setState(() {
+          globals.players[globals.playerOrder[globals.currPlayer]]['hand'][i]++;
+          done = true;
+        });
+      }
+    } else {
+      setState(() {
+        equal = false;
+      });
+    }
+  }
 
   void _removeRes(box, i) {
     if (box == 'e') {
-      globals.players[globals.playerOrder[globals.currPlayer]]['hand']
-          [expBox[i]]++;
-      expRes = [];
-      expBox.removeRange(i, 1);
-      for (int j = 0; j < expBox.length; j++) _addRes(box, expBox[j]);
+      setState(() {
+        equal = true;
+        globals.players[globals.playerOrder[globals.currPlayer]]['hand']
+            [expBox[i]]++;
+        expBox.removeRange(i, i + 1);
+      });
+
+      // for (int j = 0; j < expBox.length; j++) _addRes(box, expBox[j]);
     } else {
-      impRes = [];
-      impBox.removeRange(i, 1);
-      for (int j = 0; j < impBox.length; j++) _addRes(box, impBox[j]);
+      setState(() {
+        equal = true;
+        impBox.removeRange(i, i + 1);
+      });
+      // for (int j = 0; j< impBox.length; j++) _addRes(box, impBox[j]);
+    }
+  }
+
+  _initRes() {
+    expRes = [];
+    for (int n = 0; n < expBox.length; n++) {
+      int i = expBox[n];
+      expRes.add(Positioned(
+          left:
+              (globals.w * 11) / 50 + globals.h / 100 + (globals.w / 27) * (n),
+          top: (globals.h * 23) / 100,
+          child: SizedBox(
+              width: globals.w / 30,
+              height: globals.h * 23 / 100,
+              child: Container(
+                  child: MouseRegion(
+                      onHover: (event) {
+                        appContainer.style.cursor = 'pointer';
+                      },
+                      onExit: (event) {
+                        appContainer.style.cursor = 'default';
+                      },
+                      child: FlatButton(
+                          color: colors[res[i]],
+                          splashColor: colors['white'],
+                          onPressed: () => _removeRes('e', n),
+                          child: Container()))))));
+    }
+    impRes = [];
+    for (int n = 0; n < impBox.length; n++) {
+      int i = impBox[n];
+      impRes.add(Positioned(
+          left:
+              (globals.w * 11) / 50 + globals.h / 100 + (globals.w / 27) * (n),
+          top: (globals.h * 3) / 5,
+          child: SizedBox(
+              width: globals.w / 30,
+              height: globals.h * 23 / 100,
+              child: Container(
+                  child: MouseRegion(
+                      onHover: (event) {
+                        appContainer.style.cursor = 'pointer';
+                      },
+                      onExit: (event) {
+                        appContainer.style.cursor = 'default';
+                      },
+                      child: FlatButton(
+                          color: colors[res[i]],
+                          splashColor: colors['white'],
+                          onPressed: () => _removeRes('i', n),
+                          child: Container()))))));
     }
   }
 
   void _addRes(box, i) {
     if (box == 'e') {
-      int n = expRes.length;
+      equal = true;
       setState(() {
-        expRes.add(Positioned(
-            left: (globals.w * 11) / 50 +
-                globals.h / 100 +
-                (globals.w / 27) * (n),
-            top: (globals.h * 23) / 100,
-            child: SizedBox(
-                width: globals.w / 30,
-                height: globals.h * 23 / 100,
-                child: Container(
-                    child: MouseRegion(
-                        onHover: (event) {
-                          appContainer.style.cursor = 'pointer';
-                        },
-                        onExit: (event) {
-                          appContainer.style.cursor = 'default';
-                        },
-                        child: FlatButton(
-                            color: colors[res[i]],
-                            splashColor: colors['white'],
-                            onPressed: () => _removeRes(box, n),
-                            child: Container()))))));
-
         globals.players[globals.playerOrder[globals.currPlayer]]['hand'][i]--;
         expBox.add(i);
       });
     } else {
-      int n = impRes.length;
+      equal = true;
       setState(() {
-        impRes.add(Positioned(
-            left: (globals.w * 11) / 50 +
-                globals.h / 100 +
-                (globals.w / 27) * (n),
-            top: (globals.h * 3) / 5,
-            child: SizedBox(
-                width: globals.w / 30,
-                height: globals.h * 23 / 100,
-                child: Container(
-                    child: MouseRegion(
-                        onHover: (event) {
-                          appContainer.style.cursor = 'pointer';
-                        },
-                        onExit: (event) {
-                          appContainer.style.cursor = 'default';
-                        },
-                        child: FlatButton(
-                            color: colors[res[i]],
-                            splashColor: colors['white'],
-                            onPressed: () => _removeRes(box, n),
-                            child: Container()))))));
-
         impBox.add(i);
       });
     }
@@ -2468,275 +2576,373 @@ class _TradeScreen extends State<TradeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    //set export selection buttons
-    for (int i = 0; i < 5; i++) {
-      expResButtons.add(Positioned(
-          left: (globals.w * 13) / 25,
-          top: (globals.h * 11) / 50 + (globals.h / 20) * i,
-          child: SizedBox(
-              width: globals.h / 20,
-              height: globals.h / 20,
-              child: Container(
-                  child: MouseRegion(
-                      onHover: (event) {
-                        appContainer.style.cursor = 'pointer';
-                      },
-                      onExit: (event) {
-                        appContainer.style.cursor = 'default';
-                      },
-                      child: FlatButton(
-                          color: colors[res[i]],
-                          splashColor: colors['white'],
-                          onPressed: () => _addRes('e', i),
-                          child: Text(
-                              globals.players[
-                                      globals.playerOrder[globals.currPlayer]]
-                                      ['hand'][i]
-                                  .toString(),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: globals.h * 0.3,
-                                  color: colors['white']))))))));
-    }
-
-    //set import selection buttons
-    for (int i = 0; i < 5; i++) {
-      impResButtons.add(Positioned(
-          left: (globals.w * 13) / 25,
-          top: (globals.h * 59) / 100 + (globals.h / 20) * i,
-          child: SizedBox(
-              width: globals.h / 20,
-              height: globals.h / 20,
-              child: Container(
-                  child: MouseRegion(
-                      onHover: (event) {
-                        appContainer.style.cursor = 'pointer';
-                      },
-                      onExit: (event) {
-                        appContainer.style.cursor = 'default';
-                      },
-                      child: FlatButton(
-                          color: colors[res[i]],
-                          splashColor: colors['white'],
-                          onPressed: () => _addRes('i', i),
-                          child: Container()))))));
-    }
-
-    //draw
-    return Scaffold(
-      backgroundColor: colors['screenBG'],
-      body: Stack(
-        children: <Widget>[
-          //background
-          Positioned(
-              left: 0,
-              top: 0,
-              child: SizedBox(
-                width: globals.w * 1 / 5,
-                height: globals.h,
+    globals.dispTrade = false;
+    if (expResButtons.length == 0) {
+      //set export selection buttons
+      for (int i = 0; i < 5; i++) {
+        expResButtons.add(Positioned(
+            left: (globals.w * 13) / 25,
+            top: (globals.h * 11) / 50 + (globals.h / 20) * i,
+            child: SizedBox(
+                width: globals.h / 20,
+                height: globals.h / 20,
                 child: Container(
-                    child: MouseRegion(onHover: (event) {
-                  appContainer.style.cursor = 'pointer';
-                }, onExit: (event) {
-                  appContainer.style.cursor = 'default';
-                })),
-              )),
-          Positioned(
-              left: 0,
-              top: 0,
-              child: SizedBox(
-                width: globals.w,
-                height: globals.h / 10,
-                child: Container(
-                    child: MouseRegion(onHover: (event) {
-                  appContainer.style.cursor = 'pointer';
-                }, onExit: (event) {
-                  appContainer.style.cursor = 'default';
-                })),
-              )),
-          Positioned(
-              left: globals.w * 4 / 5,
-              top: 0,
-              child: SizedBox(
-                width: globals.w * 1 / 5,
-                height: globals.h,
-                child: Container(
-                    child: MouseRegion(onHover: (event) {
-                  appContainer.style.cursor = 'pointer';
-                }, onExit: (event) {
-                  appContainer.style.cursor = 'default';
-                })),
-              )),
-          Positioned(
-              left: 0,
-              top: globals.h * 9 / 10,
-              child: SizedBox(
-                width: globals.w,
-                height: globals.h / 10,
-                child: Container(
-                    child: MouseRegion(onHover: (event) {
-                  appContainer.style.cursor = 'pointer';
-                }, onExit: (event) {
-                  appContainer.style.cursor = 'default';
-                })),
-              )),
-          //border
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(
-                width: 7.0,
-                color: colors['brown'],
-              ),
-            ),
-          ),
-          //main box
-          Positioned(
-              left: globals.w / 5,
-              top: globals.h / 10,
-              child: SizedBox(
-                width: globals.w * 3 / 5,
-                height: globals.h * 4 / 5,
-                child: Container(color: colors['beige']),
-              )),
-          //trade label
-          Positioned(
-              left: (globals.w * 11) / 50,
-              top: (globals.h * 7) / 50,
-              child: (Text('Trade',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: globals.refscale * 0.06,
-                      color: colors['brown'])))),
-          //export box
-          Positioned(
-              left: (globals.w * 11) / 50,
-              top: (globals.h * 11) / 50,
-              child: SizedBox(
-                width: globals.w * 0.3,
-                height: globals.h * 0.25,
-                child: Container(color: colors['TB']),
-              )),
-          //export box resorces
-          Stack(
-            children: expRes,
-          ),
-          //export box resource selection
-          Stack(
-            children: expResButtons,
-          ),
-          //says no more than 8 resources at a time
-          if (noMoreOut)
-            Positioned(
-                left: (globals.w * 13) / 25,
-                top: (globals.h * 11) / 50,
-                child: (Text('No more than 8 at a time',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontSize: globals.refscale * 0.03,
-                        color: Color(0xff7c1e1e))))),
-          // for label
-          Positioned(
-              left: (globals.w * 11) / 50,
-              top: (globals.h * 51) / 100,
-              child: (Text('For',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: globals.refscale * 0.06,
-                      color: colors['brown'])))),
-          //import box
-          Positioned(
-              left: (globals.w * 11) / 50,
-              top: (globals.h * 59) / 100,
-              child: SizedBox(
-                width: globals.w * 0.3,
-                height: globals.h * 0.25,
-                child: Container(color: colors['TB']),
-              )),
-          //import resources
-          Stack(
-            children: impRes,
-          ),
-          //import resource selection
-          Stack(
-            children: impResButtons,
-          ),
-          //says no more than 5 resources at a time
-          if (noMoreIn)
-            Positioned(
-                left: (globals.w * 13) / 25,
-                top: (globals.h * 59) / 100,
-                child: (Text('No more than 5 at a time',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontSize: globals.refscale * 0.03,
-                        color: Color(0xff7c1e1e))))),
-          // Ports label
-          Positioned(
-              left: (globals.w * 31) / 50,
-              top: (globals.h * 7) / 50,
-              child: (Text('Ports',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                      fontSize: globals.refscale * 0.06,
-                      color: colors['brown'])))),
-          //ports box
-          Positioned(
-              left: (globals.w * 31) / 50,
-              top: (globals.h * 11) / 50,
-              child: SizedBox(
-                width: globals.w * 4 / 25,
-                height: globals.h / 10,
-                child: Container(color: colors['TB']),
-              )),
-          //port box ports
-          // trade price
-          Positioned(
-              left: (globals.w * 31) / 50,
-              top: (globals.h * 9) / 25,
-              child: (Text('Trade Price',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                      fontSize: globals.refscale * 0.06,
-                      color: colors['brown'])))),
-          // trade price box
-          Positioned(
-              left: (globals.w * 31) / 50,
-              top: (globals.h * 11) / 25,
-              child: SizedBox(
-                width: globals.w * 4 / 25,
-                height: globals.h / 10,
-                child: Container(color: colors['TB']),
-              )),
-          //trade price text
-          //says trade not equal if it aint
-          //Trade Button
-          Positioned(
-              left: (globals.w * 31) / 50,
-              top: (globals.h * 77) / 100,
-              child: SizedBox(
-                  width: (globals.w * 4) / 25,
-                  height: (globals.h * 7) / 100,
-                  child: Container(
-                      child: MouseRegion(
-                          onHover: (event) {
-                            appContainer.style.cursor = 'pointer';
-                          },
-                          onExit: (event) {
-                            appContainer.style.cursor = 'default';
-                          },
-                          child: FlatButton(
-                            color: colors['brown'],
-                            splashColor: colors['beige'],
-                            onPressed: () => null,
-                            child: Text('Trade',
+                    child: MouseRegion(
+                        onHover: (event) {
+                          appContainer.style.cursor = 'pointer';
+                        },
+                        onExit: (event) {
+                          appContainer.style.cursor = 'default';
+                        },
+                        child: FlatButton(
+                            color: colors[res[i]],
+                            splashColor: colors['white'],
+                            onPressed: () => _addRes('e', i),
+                            child: Text(
+                                globals.players[
+                                        globals.playerOrder[globals.currPlayer]]
+                                        ['hand'][i]
+                                    .toString(),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                    fontSize: globals.refscale * 0.06,
-                                    color: colors['white'])),
-                          ))))),
-        ],
-      ),
-    );
+                                    fontSize: globals.h * 0.3,
+                                    color: colors['white']))))))));
+      }
+
+      //set import selection buttons
+      for (int i = 0; i < 5; i++) {
+        impResButtons.add(Positioned(
+            left: (globals.w * 13) / 25,
+            top: (globals.h * 59) / 100 + (globals.h / 20) * i,
+            child: SizedBox(
+                width: globals.h / 20,
+                height: globals.h / 20,
+                child: Container(
+                    child: MouseRegion(
+                        onHover: (event) {
+                          appContainer.style.cursor = 'pointer';
+                        },
+                        onExit: (event) {
+                          appContainer.style.cursor = 'default';
+                        },
+                        child: FlatButton(
+                            color: colors[res[i]],
+                            splashColor: colors['white'],
+                            onPressed: () => _addRes('i', i),
+                            child: Container()))))));
+      }
+      //set ports
+      ports =
+          (globals.players[globals.playerOrder[globals.currPlayer]]['ports']);
+      ports.sort();
+      ports.toSet().toList();
+      Color col = colors['white'];
+      String str = '';
+      double x = (globals.w * 125) / 200;
+      for (int i = 0; i < ports.length; i++) {
+        if (ports[i] != 0) {
+          col = colors[res[ports[i] - 1]];
+          str = '';
+        } else {
+          str = '?';
+        }
+        portWidgets.add(Positioned(
+            left: x,
+            top: (globals.h * 45) / 200,
+            child: SizedBox(
+                width: globals.w * 13 / 600,
+                height: globals.h * 9 / 100,
+                child: Container(
+                    color: col,
+                    child: Align(
+                        alignment: Alignment(0.0, 0.2),
+                        child: Text(str,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: globals.w * 0.03,
+                                color: colors['brown'])))))));
+        x += (globals.w * 2) / 75;
+      }
+    } else {
+      //initialize selected resources
+      _initRes();
+    }
+
+    //set trade price
+    price = 4;
+    if (ports.length != 0) {
+      if (ports[0] == 0) price = 3;
+      //checks if the expBox only contains one resource type
+      if (expBox.length != 0) {
+        int first = expBox[0];
+        bool ye = true;
+        for (int i in expBox) {
+          if (i != first) ye = false;
+        }
+        if (ye && ports.contains(first + 1)) price = 2;
+      }
+    }
+
+    //exit if done
+    if (done) {
+      done = false;
+      expBox = [];
+      impBox = [];
+      expRes = [];
+      impRes = [];
+      return Container();
+    } else {
+      //draw
+      return Scaffold(
+        backgroundColor: colors['screenBG'],
+        body: Stack(
+          children: <Widget>[
+            GestureDetector(
+              onTap: () => setState(() {
+                done = true;
+              }),
+              child: //border
+                  Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    width: 7.0,
+                    color: colors['brown'],
+                  ),
+                ),
+              ),
+            ),
+            //background
+            Positioned(
+              left: 0,
+              top: 0,
+              child: SizedBox(
+                  width: globals.w * 1 / 5,
+                  height: globals.h,
+                  child: Container(
+                      child: MouseRegion(
+                    onHover: (event) {
+                      appContainer.style.cursor = 'pointer';
+                    },
+                    onExit: (event) {
+                      appContainer.style.cursor = 'default';
+                    },
+                  ))),
+            ),
+            Positioned(
+                left: 0,
+                top: 0,
+                child: SizedBox(
+                  width: globals.w,
+                  height: globals.h / 10,
+                  child: Container(
+                      child: MouseRegion(onHover: (event) {
+                    appContainer.style.cursor = 'pointer';
+                  }, onExit: (event) {
+                    appContainer.style.cursor = 'default';
+                  })),
+                )),
+            Positioned(
+                left: globals.w * 4 / 5,
+                top: 0,
+                child: SizedBox(
+                  width: globals.w * 1 / 5,
+                  height: globals.h,
+                  child: Container(
+                      child: MouseRegion(onHover: (event) {
+                    appContainer.style.cursor = 'pointer';
+                  }, onExit: (event) {
+                    appContainer.style.cursor = 'default';
+                  })),
+                )),
+            Positioned(
+                left: 0,
+                top: globals.h * 9 / 10,
+                child: SizedBox(
+                  width: globals.w,
+                  height: globals.h / 10,
+                  child: Container(
+                      child: MouseRegion(onHover: (event) {
+                    appContainer.style.cursor = 'pointer';
+                  }, onExit: (event) {
+                    appContainer.style.cursor = 'default';
+                  })),
+                )),
+
+            //main box
+            Positioned(
+                left: globals.w / 5,
+                top: globals.h / 10,
+                child: SizedBox(
+                  width: globals.w * 3 / 5,
+                  height: globals.h * 4 / 5,
+                  child: Container(color: colors['beige']),
+                )),
+            //trade label
+            Positioned(
+                left: (globals.w * 11) / 50,
+                top: (globals.h * 7) / 50,
+                child: (Text('Trade',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: globals.refscale * 0.06,
+                        color: colors['brown'])))),
+            //export box
+            Positioned(
+                left: (globals.w * 11) / 50,
+                top: (globals.h * 11) / 50,
+                child: SizedBox(
+                  width: globals.w * 0.3,
+                  height: globals.h * 0.25,
+                  child: Container(color: colors['TB']),
+                )),
+            //export box resorces
+            Stack(
+              children: expRes,
+            ),
+            //export box resource selection
+            Stack(
+              children: expResButtons,
+            ),
+            //says no more than 8 resources at a time
+            if (noMoreOut)
+              Positioned(
+                  left: (globals.w * 13) / 25,
+                  top: (globals.h * 11) / 50,
+                  child: (Text('No more than 8 at a time',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                          fontSize: globals.refscale * 0.03,
+                          color: Color(0xff7c1e1e))))),
+            // for label
+            Positioned(
+                left: (globals.w * 11) / 50,
+                top: (globals.h * 51) / 100,
+                child: (Text('For',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: globals.refscale * 0.06,
+                        color: colors['brown'])))),
+            //import box
+            Positioned(
+                left: (globals.w * 11) / 50,
+                top: (globals.h * 59) / 100,
+                child: SizedBox(
+                  width: globals.w * 0.3,
+                  height: globals.h * 0.25,
+                  child: Container(color: colors['TB']),
+                )),
+            //import resources
+            Stack(
+              children: impRes,
+            ),
+            //import resource selection
+            Stack(
+              children: impResButtons,
+            ),
+            //says no more than 5 resources at a time
+            if (noMoreIn)
+              Positioned(
+                  left: (globals.w * 13) / 25,
+                  top: (globals.h * 59) / 100,
+                  child: (Text('No more than 5 at a time',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                          fontSize: globals.refscale * 0.03,
+                          color: Color(0xff7c1e1e))))),
+            // Ports label
+            Positioned(
+                left: (globals.w * 31) / 50,
+                top: (globals.h * 7) / 50,
+                child: (Text('Ports',
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                        fontSize: globals.refscale * 0.06,
+                        color: colors['brown'])))),
+            //ports box
+            Positioned(
+                left: (globals.w * 31) / 50,
+                top: (globals.h * 11) / 50,
+                child: SizedBox(
+                  width: globals.w * 4 / 25,
+                  height: globals.h / 10,
+                  child: Container(color: colors['TB']),
+                )),
+            //port box ports
+            Stack(
+              children: portWidgets,
+            ),
+            // trade price
+            Positioned(
+                left: (globals.w * 31) / 50,
+                top: (globals.h * 9) / 25,
+                child: (Text('Trade Price',
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                        fontSize: globals.refscale * 0.06,
+                        color: colors['brown'])))),
+            // trade price box and price text
+            Positioned(
+                left: (globals.w * 31) / 50,
+                top: (globals.h * 11) / 25,
+                child: SizedBox(
+                  width: globals.w * 4 / 25,
+                  height: globals.h / 10,
+                  child: Container(
+                    color: colors['TB'],
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          price.toString() + ' : 1',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: globals.refscale * 0.06,
+                              color: colors['brown']),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
+
+            //says trade not equal if it aint
+            if (!equal)
+              Positioned(
+                  left: (globals.w * 39) / 50,
+                  top: (globals.h * 73) / 100,
+                  child: (Text('Trade not equal',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                          fontSize: globals.refscale * 0.03,
+                          color: Color(0xff7c1e1e))))),
+            //Trade Button
+            Positioned(
+                left: (globals.w * 31) / 50,
+                top: (globals.h * 77) / 100,
+                child: SizedBox(
+                    width: (globals.w * 4) / 25,
+                    height: (globals.h * 7) / 100,
+                    child: Container(
+                        child: MouseRegion(
+                            onHover: (event) {
+                              appContainer.style.cursor = 'pointer';
+                            },
+                            onExit: (event) {
+                              appContainer.style.cursor = 'default';
+                            },
+                            child: FlatButton(
+                              color: colors['brown'],
+                              splashColor: colors['beige'],
+                              onPressed: () => _completeTrade(),
+                              child: Text('Trade',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      fontSize: globals.refscale * 0.06,
+                                      color: colors['white'])),
+                            ))))),
+          ],
+        ),
+      );
+    }
   }
 }
 

@@ -40,6 +40,7 @@ int nearestVert, closest;
 int robberLoc;
 int longestRoad = 0;
 int lrHolder = -1;
+int laHolder = -1;
 
 //Development Card Variables
 bool dispDevCards = false;

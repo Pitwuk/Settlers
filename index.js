@@ -1021,7 +1021,7 @@ function draw_ui() {
         h - refscale * 0.03
       );
     }
-    //longest road card
+    //largest army card
     if (curr_player == la_holder) {
       ui_ctx.fillStyle = "#352d26";
       ui_ctx.fillRect(
