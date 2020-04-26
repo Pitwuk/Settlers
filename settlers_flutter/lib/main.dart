@@ -13,7 +13,7 @@ import 'package:settlers_flutter/bloc/bloc.dart';
 import 'globals.dart' as globals;
 
 final appContainer = html.window.document.getElementById('app-container');
-const colors = {
+const colors = <String, Color>{
   'beige': Color(0xffbeb3aa),
   'brown': Color(0xff352d26),
   's': Color(0xff09af11),
@@ -253,15 +253,15 @@ class NumPlayersMenu extends StatelessWidget {
 }
 
 class InputNames extends StatelessWidget {
-  final num;
-  InputNames(this.num);
+  final numb;
+  InputNames(this.numb);
 
   @override
   Widget build(BuildContext context) {
     if (globals.gametype == 'online')
-      UpdateGame(repository: repository).update('num_players', num);
+      UpdateGame(repository: repository).update('num_players', numb);
     else
-      globals.numPlayers = num;
+      globals.numPlayers = numb;
     return Scaffold(
       backgroundColor: colors['beige'],
       body: Stack(
@@ -274,7 +274,7 @@ class InputNames extends StatelessWidget {
               ),
             ),
           ),
-          NameForm(num)
+          NameForm(numb)
         ],
       ),
     );
@@ -332,24 +332,30 @@ class _MenuState extends State<MenuButtons> {
 }
 
 class NameForm extends StatefulWidget {
-  final num;
-  NameForm(this.num);
+  final numb;
+  NameForm(this.numb);
   @override
   _NameFormState createState() {
-    return _NameFormState(num);
+    return _NameFormState(numb);
   }
 }
 
 class _NameFormState extends State<NameForm> {
-  final num;
+  final numb;
 
-  _NameFormState(this.num);
+  _NameFormState(this.numb);
 
   void _showOrderScreen() {
     Navigator.of(context).pushNamed('/order');
   }
 
   final myController = TextEditingController();
+  final FocusNode fn = FocusNode();
+  void _requestFocus() {
+    setState(() {
+      FocusScope.of(context).requestFocus(fn);
+    });
+  }
 
   @override
   void dispose() {
@@ -362,14 +368,21 @@ class _NameFormState extends State<NameForm> {
     if (myController.text != '') {
       var name = myController.text;
       myController.clear();
-      Scaffold.of(context).showSnackBar(SnackBar(content: Text(name)));
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text(
+          name,
+          style: TextStyle(
+              color: colors['white'], fontSize: globals.refscale * .05),
+        ),
+        backgroundColor: colors['brown'],
+      ));
       if (globals.gametype == 'online')
         UpdateGame(repository: repository).update("%new_player%", name);
       else {
         Map a = new Map();
         a = {
           "color": "",
-          "hand": [0, 0, 0, 0, 0],
+          "hand": [20, 20, 20, 20, 20],
           "points": 0,
           "settlements": [],
           "roads": [],
@@ -389,22 +402,59 @@ class _NameFormState extends State<NameForm> {
 
   @override
   Widget build(BuildContext context) {
+    var screenSize = MediaQuery.of(context).size;
+    globals.w = screenSize.width;
+    globals.h = screenSize.height;
+    globals.refscale = (globals.w < globals.h) ? globals.w : globals.h;
     int count = 0;
     return Column(children: <Widget>[
+      Container(
+        decoration: BoxDecoration(
+          border: Border.all(
+            width: 7.0,
+            color: colors['brown'],
+          ),
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.all(30.0),
+      ),
+      Text('Enter Name',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 40.0, color: colors['black'])),
       Padding(
         padding: const EdgeInsets.all(30.0),
         child: TextFormField(
           controller: myController,
           onFieldSubmitted: (value) {
-            if (!globals.players.containsKey(value)) {
+            if (!globals.players.containsKey(value) &&
+                !['', ' ', null, false].contains(value)) {
               count++;
+
               _submission();
-              if (count == num) {
+              if (count == numb) {
                 _showOrderScreen();
               }
             }
           },
-          decoration: const InputDecoration(labelText: 'Name'),
+          focusNode: fn,
+          onTap: _requestFocus,
+          cursorColor: colors['brown'],
+          style: TextStyle(
+              color: colors['brown'], fontSize: globals.refscale * .08),
+          decoration: InputDecoration(
+            fillColor: colors['white'],
+            filled: true,
+            labelText: 'Name',
+            labelStyle: TextStyle(
+                color: colors['brown'], fontSize: globals.refscale * .03),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: colors['brown'], width: 5.0),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: colors['brown'], width: 5.0),
+            ),
+          ),
           validator: (value) {
             if (value.isEmpty) {
               return 'Please enter name';
@@ -569,11 +619,6 @@ class _ColorChoice extends State<ColorChoice> {
 
   @override
   Widget build(BuildContext context) {
-    var screenSize = MediaQuery.of(context).size;
-    globals.w = screenSize.width;
-    globals.h = screenSize.height;
-    globals.refscale = (globals.w < globals.h) ? globals.w : globals.h;
-
     var x = globals.w / 2 -
         (globals.w * 0.15 + globals.w * 0.01) * 2 -
         globals.w * 0.15 / 2;
@@ -1349,12 +1394,13 @@ class Graph {
   dfs(startingNode) {
     List visited = [];
     List verts = [];
-    for (var i = 0; i < this.noOfVertices; i++) visited[i] = false;
+    for (var i = 0; i < this.noOfVertices; i++) visited.add(false);
 
     this.dfsUtil(startingNode, visited);
     for (var n = 0; n < visited.length; n++) {
       if (visited[n]) verts.add(n);
     }
+
     return verts;
   }
 
@@ -1364,20 +1410,25 @@ class Graph {
     var getNeighbors = this.adjList[vert];
 
     for (var i in getNeighbors) {
-      var getElem = getNeighbors[i];
+      var getElem = i;
       if (!visited[getElem]) this.dfsUtil(getElem, visited);
     }
   }
 }
 
 class UIWidget extends StatefulWidget {
+  final Function() notifyParent;
+  UIWidget({Key key, @required this.notifyParent});
   @override
   _UIState createState() {
-    return _UIState();
+    return _UIState(notifyParent: notifyParent);
   }
 }
 
 class _UIState extends State<UIWidget> {
+  final Function() notifyParent;
+  _UIState({Key key, @required this.notifyParent});
+
   void rollDice() {
     if (!globals.rolled) {
       setState(() {
@@ -1393,6 +1444,7 @@ class _UIState extends State<UIWidget> {
       } else {
         setState(() {
           globals.placeP = 't';
+          widget.notifyParent();
         });
       }
     }
@@ -1512,21 +1564,22 @@ class _UIState extends State<UIWidget> {
 
     return Stack(children: <Widget>[
       //name
-      Positioned(
-        left: 20 - 3.5,
-        top: 20 - 3.5,
-        child: Container(
-          child: uiButton(
-              context, globals.playerOrder[globals.currPlayer], 20, 20, null),
-          decoration: BoxDecoration(
-            border: Border.all(
-              width: 7.0,
-              color: colors['brown'],
-            ),
-          ),
-        ),
-      ),
-      //dice roll and number rolled
+      // Positioned(
+      //   left: 20 - 3.5,
+      //   top: 20 - 3.5,
+      //   child: Container(
+      //     child: uiButton(
+      //         context, globals.playerOrder[globals.currPlayer], 20, 20, null),
+      //     decoration: BoxDecoration(
+      //       border: Border.all(
+      //         width: 7.0,
+      //         color: colors['brown'],
+      //       ),
+      //     ),
+      //   ),
+      // ),
+      uiButton(context, globals.playerOrder[globals.currPlayer], 20, 20, null),
+      //dice roll
       Positioned(
           left: 20,
           top: 40 + globals.refscale * 0.07,
@@ -1550,13 +1603,13 @@ class _UIState extends State<UIWidget> {
                         child: Container(),
                       ))))),
       //dice roll prompt and rolled number
-      if (!globals.rolled)
+      if (!globals.rolled && !globals.start)
         Align(
             alignment: Alignment(0, -0.9),
             child: (Text('Roll',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 40.0, color: colors['white']))))
-      else
+      else if (!globals.start)
         Positioned(
             left: 20 + globals.refscale * .25,
             top: 40 + globals.refscale * 0.1,
@@ -1612,9 +1665,21 @@ class _UIState extends State<UIWidget> {
                                       padding: EdgeInsets.all(0),
                                       color: Colors.transparent,
                                       splashColor: colors['brown'],
-                                      onPressed: () => setState(() {
+                                      onPressed: () {
+                                        if (globals.players[globals.playerOrder[
+                                                        globals.currPlayer]]
+                                                    ['hand'][2] >
+                                                0 &&
+                                            globals.players[globals.playerOrder[
+                                                        globals.currPlayer]]
+                                                    ['hand'][4] >
+                                                0) {
+                                          setState(() {
                                             globals.placeP = 'r';
-                                          }),
+                                          });
+                                          widget.notifyParent();
+                                        }
+                                      },
                                       child: SizedBox(
                                           width: globals.refscale * .28,
                                           height: globals.refscale * .085,
@@ -1648,9 +1713,26 @@ class _UIState extends State<UIWidget> {
                                       padding: EdgeInsets.all(0),
                                       color: Colors.transparent,
                                       splashColor: colors['brown'],
-                                      onPressed: () => setState(() {
+                                      onPressed: () {
+                                        if (globals.players[globals.playerOrder[globals.currPlayer]]
+                                                    ['hand'][0] >
+                                                0 &&
+                                            globals.players[globals.playerOrder[globals.currPlayer]]
+                                                    ['hand'][2] >
+                                                0 &&
+                                            globals.players[globals.playerOrder[globals.currPlayer]]
+                                                    ['hand'][3] >
+                                                0 &&
+                                            globals.players[globals.playerOrder[
+                                                        globals.currPlayer]]
+                                                    ['hand'][4] >
+                                                0) {
+                                          setState(() {
                                             globals.placeP = 's';
-                                          }),
+                                          });
+                                          widget.notifyParent();
+                                        }
+                                      },
                                       child: SizedBox(
                                           width: globals.refscale * .28,
                                           height: globals.refscale * .085,
@@ -1684,9 +1766,21 @@ class _UIState extends State<UIWidget> {
                                       padding: EdgeInsets.all(0),
                                       color: Colors.transparent,
                                       splashColor: colors['brown'],
-                                      onPressed: () => setState(() {
+                                      onPressed: () {
+                                        if (globals.players[globals.playerOrder[
+                                                        globals.currPlayer]]
+                                                    ['hand'][1] >
+                                                2 &&
+                                            globals.players[globals.playerOrder[
+                                                        globals.currPlayer]]
+                                                    ['hand'][3] >
+                                                1) {
+                                          setState(() {
                                             globals.placeP = 'c';
-                                          }),
+                                          });
+                                          widget.notifyParent();
+                                        }
+                                      },
                                       child: SizedBox(
                                           width: globals.refscale * .28,
                                           height: globals.refscale * .085,
@@ -1720,7 +1814,21 @@ class _UIState extends State<UIWidget> {
                                       padding: EdgeInsets.all(0),
                                       color: Colors.transparent,
                                       splashColor: colors['brown'],
-                                      onPressed: () => _getDevCard(),
+                                      onPressed: () {
+                                        if (globals.players[globals.playerOrder[globals.currPlayer]]
+                                                    ['hand'][0] >
+                                                0 &&
+                                            globals.players[globals.playerOrder[
+                                                        globals.currPlayer]]
+                                                    ['hand'][1] >
+                                                0 &&
+                                            globals.players[globals
+                                                        .playerOrder[globals.currPlayer]]
+                                                    ['hand'][3] >
+                                                0) {
+                                          _getDevCard();
+                                        }
+                                      },
                                       child: SizedBox(
                                           width: globals.refscale * .28,
                                           height: globals.refscale * .085,
@@ -1814,11 +1922,11 @@ class _UIState extends State<UIWidget> {
         ),
 
       //gamepeice placement
-      if (globals.placeP != '')
-        PlaceGamePiece(),
+      // if (globals.placeP != '')
+      //   PlaceGamePiece(),
       //display dev cards
       if (globals.dispDevCards)
-        DispDevCards(),
+        DispDevCards(notifyParent: notifyParent),
       //disp trade screen
       if (globals.dispTrade)
         TradeScreen(),
@@ -2116,13 +2224,19 @@ class DCBackPainter extends CustomPainter {
 }
 
 class DispDevCards extends StatefulWidget {
+  final Function() notifyParent;
+  DispDevCards({Key key, @required this.notifyParent});
+  @override
   @override
   _DispDevCards createState() {
-    return _DispDevCards();
+    return _DispDevCards(notifyParent: notifyParent);
   }
 }
 
 class _DispDevCards extends State<DispDevCards> {
+  final Function() notifyParent;
+  _DispDevCards({Key key, @required this.notifyParent});
+
   List<Widget> devCards = [];
   List<Widget> usedCards = [];
   List<Widget> vpCards = [];
@@ -2214,35 +2328,47 @@ class _DispDevCards extends State<DispDevCards> {
   void knightCard() {
     //move the robber
     setState(() {
+      globals.dispDevCards = false;
       globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
           [0]--;
       globals.players[globals.playerOrder[globals.currPlayer]]['used_dev_cards']
           [0]++;
       globals.placeP = 't';
+      widget.notifyParent();
     });
     //check for longest army
     if (globals.players[globals.playerOrder[globals.currPlayer]]
-                ['used_dev_cards'][0] >
-            2 &&
-        globals.players[globals.playerOrder[globals.currPlayer]]
+            ['used_dev_cards'][0] >
+        2) {
+      if (globals.laHolder > -1) {
+        if (globals.players[globals.playerOrder[globals.currPlayer]]
                 ['used_dev_cards'][0] >
             globals.players[globals.playerOrder[globals.laHolder]]
-                ['used_dev_cards'][0]) globals.laHolder = globals.currPlayer;
+                ['used_dev_cards'][0]) {
+          globals.laHolder = globals.currPlayer;
+        }
+      } else {
+        globals.laHolder = globals.currPlayer;
+      }
+    }
   }
 
   void roadCard() {
     setState(() {
+      globals.dispDevCards = false;
       globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
           [1]--;
       globals.players[globals.playerOrder[globals.currPlayer]]['used_dev_cards']
           [1]++;
       globals.roadCardBool = true;
       globals.placeP = 'r';
+      widget.notifyParent();
     });
   }
 
   void yopCard() {
     setState(() {
+      globals.dispDevCards = false;
       globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
           [2]--;
       globals.players[globals.playerOrder[globals.currPlayer]]['used_dev_cards']
@@ -2254,6 +2380,7 @@ class _DispDevCards extends State<DispDevCards> {
 
   void monopolyCard() {
     setState(() {
+      globals.dispDevCards = false;
       globals.players[globals.playerOrder[globals.currPlayer]]['dev_cards']
           [0]--;
       globals.players[globals.playerOrder[globals.currPlayer]]['used_dev_cards']
@@ -2283,7 +2410,6 @@ class _DispDevCards extends State<DispDevCards> {
             onTap: () {
               setState(() {
                 exit = true;
-                globals.dispDevCards = false;
               });
             },
             child: Container(
@@ -2949,6 +3075,8 @@ class _TradeScreen extends State<TradeScreen> {
 class PlaceGamePiece extends StatefulWidget {
   @override
   _PlacePiece createState() {
+    globals.nearestVert = null;
+    globals.closest = null;
     return _PlacePiece();
   }
 }
@@ -2956,6 +3084,10 @@ class PlaceGamePiece extends StatefulWidget {
 class _PlacePiece extends State<PlaceGamePiece> {
   double x = 0.0;
   double y = 0.0;
+
+  void refresh() {
+    setState(() {});
+  }
 
   void _updateLocation(PointerEvent details) {
     setState(() {
@@ -2974,7 +3106,7 @@ class _PlacePiece extends State<PlaceGamePiece> {
             });
           },
           child: CustomPaint(
-              painter: DrawGamePieces(x, y),
+              painter: DrawGamePieces(x, y, notifyParent: refresh),
               child: MouseRegion(
                   onHover: _updateLocation,
                   child: Stack(
@@ -2986,22 +3118,24 @@ class _PlacePiece extends State<PlaceGamePiece> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     fontSize: 40.0, color: colors['white'])))),
+                      UIWidget(notifyParent: refresh)
                     ],
                   ))));
     }
-    if (globals.start) {
-      globals.start = false;
-      return CustomPaint(painter: DrawGamePieces(x, y), child: UIWidget());
-    }
-    return CustomPaint(painter: DrawGamePieces(x, y));
+    globals.start = false;
+    return CustomPaint(
+        painter: DrawGamePieces(x, y, notifyParent: refresh),
+        child: UIWidget(notifyParent: refresh));
   }
 }
 
 class DrawGamePieces extends CustomPainter {
+  final Function() notifyParent;
+
   Canvas gpCanvas;
-  // int nearestVert;
   double x, y;
-  DrawGamePieces(this.x, this.y);
+  DrawGamePieces(this.x, this.y, {Key key, @required this.notifyParent});
+
   @override
   void paint(Canvas canvas, Size size) {
     gpCanvas = canvas;
@@ -3083,7 +3217,10 @@ class DrawGamePieces extends CustomPainter {
         }
       }
     }
-    if (isEmpty) {
+    if (isEmpty &&
+        (globals.players[globals.playerOrder[globals.currPlayer]]['road_verts']
+                .contains(globals.nearestVert) ||
+            globals.start)) {
       //draw settlement
       globals.placeP = '';
       Paint paint = Paint()
@@ -3153,21 +3290,22 @@ class DrawGamePieces extends CustomPainter {
   void placeRoad() {
     bool alreadyOwned = false;
     for (List verts in globals.storedRoads) {
-      if (verts[0] == globals.nearestVert && verts[1] == globals.closest ||
-          verts[1] == globals.nearestVert && verts[0] == globals.closest) {
+      if ((verts[0] == globals.nearestVert && verts[1] == globals.closest) ||
+          (verts[1] == globals.nearestVert && verts[0] == globals.closest)) {
         alreadyOwned = true;
         break;
       }
     }
 
     if (!alreadyOwned &&
+        (globals.players[globals.playerOrder[globals.currPlayer]]['road_verts']
+                .contains(globals.nearestVert) ||
             globals.players[globals.playerOrder[globals.currPlayer]]
                     ['road_verts']
-                .contains(globals.nearestVert) ||
-        globals.players[globals.playerOrder[globals.currPlayer]]['road_verts']
-            .contains(globals.closest) ||
-        globals.players[globals.playerOrder[globals.currPlayer]]['settlements']
-            .contains(globals.nearestVert)) {
+                .contains(globals.closest) ||
+            globals.players[globals.playerOrder[globals.currPlayer]]
+                    ['settlements']
+                .contains(globals.nearestVert))) {
       if (!globals.start && !globals.roadCardBool) {
         globals.players[globals.playerOrder[globals.currPlayer]]['hand'][2]--;
         globals.players[globals.playerOrder[globals.currPlayer]]['hand'][4]--;
@@ -3186,6 +3324,7 @@ class DrawGamePieces extends CustomPainter {
           Offset(globals.vertices[globals.closest][0],
               globals.vertices[globals.closest][1]),
           paint);
+
       //store road in player roads, stored roads, and add to road graph
       globals.storedRoads.add([
         globals.nearestVert,
@@ -3210,20 +3349,22 @@ class DrawGamePieces extends CustomPainter {
         globals.players[globals.playerOrder[globals.currPlayer]]['road_graph']
             .addVertex(globals.closest);
       }
-
       globals.players[globals.playerOrder[globals.currPlayer]]['road_graph']
           .addEdge(globals.nearestVert, globals.closest);
 
       //dfs for longest road
       if (!globals.start) {
-        List l1 = globals.players[globals.playerOrder[globals.currPlayer]]
+        int v1 = globals.players[globals.playerOrder[globals.currPlayer]]
+            ['road_verts'][0];
+        int v2 = globals.players[globals.playerOrder[globals.currPlayer]]
+            ['road_verts'][2];
+
+        var l1 = globals.players[globals.playerOrder[globals.currPlayer]]
                 ['road_graph']
-            .dfs(globals.players[globals.playerOrder[globals.currPlayer]]
-                ['road_verts'][0]);
+            .dfs(v1);
         List l2 = globals.players[globals.playerOrder[globals.currPlayer]]
                 ['road_graph']
-            .dfs(globals.players[globals.playerOrder[globals.currPlayer]]
-                ['road_verts'][2]);
+            .dfs(v2);
         if (l1.length > 5 && l1.length > globals.longestRoad) {
           if (globals.lrHolder != -1)
             globals.players[globals.playerOrder[globals.lrHolder]]['points'] -=
