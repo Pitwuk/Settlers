@@ -1,17 +1,17 @@
 import 'package:equatable/equatable.dart';
 
 class Game extends Equatable {
-  final game_data;
+  final gameData;
 
-  const Game({this.game_data});
+  const Game({this.gameData});
 
   @override
-  List<Object> get props => [game_data];
+  List<Object> get props => [gameData];
 
   static Game fromJson(dynamic json) {
-    return Game(game_data: json);
+    return Game(gameData: json);
   }
 
   @override
-  String toString() => 'Game { game_data: $game_data }';
+  String toString() => 'Game { game_data: $gameData }';
 }

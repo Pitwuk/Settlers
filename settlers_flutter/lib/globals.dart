@@ -1,6 +1,24 @@
-//canvas variables
+//online variables
 
+import 'package:flutter/painting.dart';
+
+String gameCode = '';
+var gameData;
+String tempName;
+bool error = false;
+bool lobbyFull = false;
+int playerNum = -1;
+var roadGraph;
+String putData = '';
+Color playerColor;
+String update = '';
+int monopoly = -1;
+
+//canvas variables
 double w, h;
+double xScale = 1;
+double yScale = 1;
+double scalar = 1;
 double refscale = 0;
 double r = refscale * .08;
 
@@ -12,9 +30,11 @@ var players = {};
 
 //game board variables
 String gametype = 'local';
-var tiles;
-List tileCenters =
-    []; // hashmap of tiles with coordinate : [resource, dice num]
+List tiles = [];
+List initCenters = [];
+List tileCenters = []; // list of tiles with coordinate : [resource, dice num]
+List initVertices = [];
+
 List vertices = [];
 var vertGraph;
 List coastVerts = [];
@@ -27,7 +47,8 @@ bool start = true;
 double sW = refscale * 0.03;
 double sH = refscale * 0.05;
 String placeP = 's';
-List vertexXs = [],
+List initvertexXs = [],
+    vertexXs = [],
     vertexYs = [],
     possVerts = [],
     unsortedYs = [],
@@ -39,6 +60,7 @@ double vertexXd;
 int nearestVert, closest;
 int robberLoc;
 int longestRoad = 0;
+int largestArmy = 0;
 int lrHolder = -1;
 int laHolder = -1;
 
@@ -53,10 +75,11 @@ List dispText = [
   'Monopoly',
   'Victory Point'
 ];
+bool resSelect = false;
 
 //gameplay variables
 bool rolled = false;
-int diceNum;
+int diceNum = 0;
 
 //trade variables
 bool dispTrade = false;

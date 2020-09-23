@@ -9,7 +9,7 @@ class GameBloc extends Bloc<GameEvent, GameState> {
   final GameRepository repository;
   final ke, value;
 
-  GameBloc({@required this.repository, this.ke, this.value})
+  GameBloc(this.ke, this.value, {@required this.repository})
       : assert(repository != null);
 
   @override
@@ -22,7 +22,6 @@ class GameBloc extends Bloc<GameEvent, GameState> {
       try {
         print('Attempting to fetch');
         final Game gamedata = await repository.fetchGame();
-        print(gamedata.toString());
         yield GameLoaded(gamedata: gamedata);
       } catch (_) {
         yield GameError();
@@ -31,8 +30,8 @@ class GameBloc extends Bloc<GameEvent, GameState> {
       yield GameLoading();
       try {
         print('Attempting to put');
+        print(ke);
         final Game gamedata = await repository.putGame(ke, value);
-        print(gamedata.toString());
         yield GameLoaded(gamedata: gamedata);
       } catch (_) {
         yield GameError();
